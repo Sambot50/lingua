@@ -9,7 +9,6 @@
 <meta name="theme-color" content="#f8f7f4">
 <title>Lingua — Mon Anglais</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.svg">
 <style>
 :root{
   --bg:#f8f7f4;--surf:#fff;--surf2:#f1f0ed;
@@ -27,629 +26,502 @@
 html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overscroll-behavior:none;}
 #app{display:flex;flex-direction:column;height:100%;max-width:480px;margin:0 auto;}
 #screen{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(var(--safe-top)+16px) 16px 16px;}
-#nav{display:flex;background:var(--surf);border-top:1px solid var(--bord);padding:6px 0 calc(var(--safe-bot)+6px);flex-shrink:0;}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:none;background:none;color:var(--txt3);cursor:pointer;font-size:10px;padding:4px 0;}
-.nb.on{color:var(--acc);}
-.nb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-.card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);padding:14px;}
-input,select,textarea{width:100%;background:var(--surf2);border:1px solid var(--bord);border-radius:var(--rs);color:var(--txt);font-family:inherit;font-size:15px;padding:11px 13px;outline:none;-webkit-appearance:none;}
-input:focus,select:focus,textarea:focus{border-color:var(--acc);}
-input::placeholder,textarea::placeholder{color:var(--txt3);}
-textarea{resize:none;line-height:1.5;}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
-label{display:block;font-size:11px;color:var(--txt3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;}
-.btn{display:inline-flex;align-items:center;gap:7px;padding:11px 18px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s,transform .1s;}
-.btn:active{transform:scale(0.97);}
+#nav{display:flex;background:var(--surf);border-top:1px solid var(--bord);padding:6px 0 calc(var(--safe-bot)+6px);}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;cursor:pointer;color:var(--txt3);font-size:10px;padding:4px 0;transition:color .15s;}
+.nav-btn.active{color:var(--acc);}
+.nav-btn svg{width:22px;height:22px;}
+
+/* Cards */
+.card{background:var(--surf);border-radius:var(--r);border:1px solid var(--bord);padding:16px;margin-bottom:12px;}
+.card-sm{padding:12px;}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:var(--rs);border:none;cursor:pointer;font-size:14px;font-weight:500;transition:opacity .15s;}
+.btn:active{opacity:.7;}
 .btn-primary{background:var(--acc);color:#fff;}
-.btn-ghost{background:var(--surf2);color:var(--txt2);border:1px solid var(--bord2);}
-.btn-green{background:var(--grn-dim);color:var(--grn-txt);border:1px solid #86efac;}
-.btn-red{background:var(--red-dim);color:var(--red-txt);border:1px solid #fca5a5;}
+.btn-ghost{background:var(--surf2);color:var(--txt);}
+.btn-danger{background:var(--red-dim);color:var(--red-txt);}
+.btn-success{background:var(--grn-dim);color:var(--grn-txt);}
 .btn-full{width:100%;justify-content:center;}
-.btn:disabled{opacity:.4;cursor:not-allowed;}
-.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;}
-.tag-cat{background:var(--surf2);color:var(--txt2);}
+.btn-sm{padding:6px 12px;font-size:13px;}
+
+/* Inputs */
+input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--bord2);border-radius:var(--rs);font-size:15px;background:var(--surf);color:var(--txt);outline:none;font-family:inherit;}
+input:focus,textarea:focus,select:focus{border-color:var(--acc);}
+textarea{resize:none;min-height:80px;}
+label{display:block;font-size:13px;font-weight:500;color:var(--txt2);margin-bottom:6px;}
+.field{margin-bottom:14px;}
+
+/* Tags */
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;}
 .tag-naval{background:var(--acc-dim);color:var(--acc-txt);}
-.tag-ok{background:var(--grn-dim);color:var(--grn-txt);}
-.slbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);margin-bottom:8px;}
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(14,165,233,.25);border-top-color:var(--acc);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;}
-@keyframes sp{to{transform:rotate(360deg);}}
-.empty{text-align:center;padding:40px 20px;color:var(--txt3);font-size:14px;}
-.mode-toggle{display:flex;background:var(--surf2);border-radius:var(--rs);padding:3px;gap:2px;margin-bottom:12px;}
-.mt-btn{flex:1;padding:7px;border:none;background:transparent;border-radius:6px;font-size:12px;font-weight:500;color:var(--txt2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;}
-.mt-btn.on{background:var(--surf);color:var(--acc);box-shadow:0 1px 3px rgba(0,0,0,.1);font-weight:600;}
-.dir-row{display:flex;gap:6px;margin-bottom:10px;}
-.dir-btn{flex:1;padding:7px;border-radius:var(--rs);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--bord2);background:var(--surf2);color:var(--txt2);}
-.dir-btn.on{background:var(--acc-dim);color:var(--acc-txt);border-color:#bae6fd;font-weight:700;}
-.hhead{display:flex;justify-content:space-between;align-items:center;}
-.htitle{font-size:22px;font-weight:700;}
-.streak{font-size:12px;color:var(--amb);background:var(--amb-dim);padding:4px 10px;border-radius:20px;}
-.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.stat{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:11px;text-align:center;}
-.stat-v{font-size:22px;font-weight:700;}
-.stat-l{font-size:10px;color:var(--txt3);margin-top:2px;}
-.cap-lbl{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:5px;}
-.cap-row{display:flex;gap:7px;}
-.cap-row input{flex:1;}
-.go-btn{background:var(--acc);color:#fff;border:none;border-radius:var(--rs);padding:11px 14px;font-size:17px;cursor:pointer;flex-shrink:0;}
-.trans-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--rs);padding:13px;margin-top:10px;}
-.trans-en{font-size:17px;font-weight:700;}
-.trans-fr{font-size:13px;color:var(--txt2);margin:3px 0 7px;}
-.trans-ex{font-size:12px;color:var(--txt3);font-style:italic;padding:8px;background:#fff;border-radius:6px;border-left:3px solid var(--acc);margin-bottom:10px;line-height:1.5;}
-.trans-btns{display:flex;gap:7px;}
-.analysis-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--rs);padding:13px;margin-top:10px;}
-.analysis-title{font-size:11px;font-weight:700;color:var(--grn-txt);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;}
-.wf-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #d1fae5;}
-.wf-row:last-of-type{border-bottom:none;margin-bottom:8px;}
-.wf-en{font-size:13px;font-weight:700;flex:1;}
-.wf-fr{font-size:11px;color:var(--txt2);}
-.wf-add{background:var(--grn-dim);border:1px solid #86efac;color:var(--grn-txt);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;}
-.wf-added{font-size:11px;color:var(--grn-txt);background:var(--grn-dim);padding:4px 9px;border-radius:6px;flex-shrink:0;}
-.wlist{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);overflow:hidden;}
-.wi{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bord);cursor:pointer;}
-.wi:last-child{border-bottom:none;}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);flex-shrink:0;}
-.dot.g{background:var(--grn);}
-.wi-en{font-size:14px;font-weight:600;flex:1;}
-.wi-fr{font-size:12px;color:var(--txt2);}
-.fpbar{height:3px;background:var(--surf2);border-radius:2px;overflow:hidden;}
-.fpfill{height:100%;background:var(--acc);transition:width .3s;}
-.flashcard{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;text-align:center;cursor:pointer;gap:8px;user-select:none;}
-.fc-dir{font-size:11px;color:var(--acc);background:var(--acc-dim);padding:3px 10px;border-radius:20px;}
-.fc-hint{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);}
-.fc-word{font-size:28px;font-weight:700;line-height:1.2;}
-.fc-tag{background:var(--surf2);color:var(--txt2);font-size:11px;padding:3px 9px;border-radius:20px;}
-.fc-reveal{margin-top:14px;width:100%;}
-.fc-fr{font-size:18px;color:var(--txt2);font-weight:500;margin-bottom:8px;}
-.fc-ex{font-size:12px;color:var(--txt3);font-style:italic;background:var(--surf2);padding:9px;border-radius:6px;line-height:1.5;}
-.fc-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.btn-again{background:var(--red-dim);color:var(--red-txt);border:1px solid #fca5a5;border-radius:var(--rs);padding:14px;font-size:14px;font-weight:700;cursor:pointer;}
-.btn-got{background:var(--grn-dim);color:var(--grn-txt);border:1px solid #86efac;border-radius:var(--rs);padding:14px;font-size:14px;font-weight:700;cursor:pointer;}
-.swrap{position:relative;}
-.swrap input{padding-left:36px;}
-.si{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--txt3);font-size:17px;pointer-events:none;}
-.chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
-.chips::-webkit-scrollbar{display:none;}
-.chip{flex-shrink:0;padding:5px 13px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--bord);color:var(--txt2);background:var(--surf);}
-.chip.on{background:var(--acc-dim);border-color:var(--acc);color:var(--acc-txt);font-weight:700;}
-.gword{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);padding:12px 14px;cursor:pointer;}
-.gword+.gword{margin-top:8px;}
-.gword.m{border-left:3px solid var(--grn);}
-.gw-en{font-size:15px;font-weight:700;}
-.gw-fr{font-size:12px;color:var(--txt2);margin:3px 0 8px;}
-.gw-tags{display:flex;gap:5px;flex-wrap:wrap;}
-.det-back{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer;border:none;background:none;padding:0;margin-bottom:4px;}
-.det-en{font-size:28px;font-weight:700;}
-.det-fr{font-size:17px;color:var(--txt2);margin-top:4px;}
-.det-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.det-m{background:var(--surf2);border-radius:var(--rs);padding:10px 12px;}
-.det-ml{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
-.det-mv{font-size:13px;font-weight:600;}
-.det-slbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);margin-bottom:6px;}
-.det-box{background:var(--surf2);border-radius:var(--rs);padding:12px;font-size:13px;color:var(--txt2);line-height:1.6;}
-.det-box.ex{font-style:italic;border-left:3px solid var(--acc);border-radius:0 var(--rs) var(--rs) 0;}
-.section{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);overflow:hidden;margin-bottom:10px;}
-.sec-head{padding:10px 14px;border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:7px;}
-.sec-head svg{width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-.sec-head span{font-size:11px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.06em;}
-.srow{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--bord);gap:10px;}
-.srow:last-child{border-bottom:none;}
-.srow-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.srow-body{flex:1;}
-.srow-lbl{font-size:14px;font-weight:500;}
-.srow-sub{font-size:11px;color:var(--txt3);margin-top:1px;}
-.toggle{width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
-.toggle.on{background:var(--acc);}
-.toggle.off{background:#d1d5db;}
-.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;transition:transform .2s;}
-.toggle.on::after{transform:translateX(21px);}
-.toggle.off::after{transform:translateX(3px);}
-.sel-pill{background:var(--surf2);border:1px solid var(--bord2);border-radius:6px;color:var(--txt2);font-size:12px;padding:4px 22px 4px 8px;width:auto;}
-.prog-bar{height:8px;background:var(--surf2);border-radius:4px;overflow:hidden;margin-top:6px;}
-.prog-fill{height:100%;background:var(--grn);border-radius:4px;}
-.stats-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
-.sg{background:var(--surf2);border-radius:var(--rs);padding:10px;text-align:center;}
-.sg-v{font-size:20px;font-weight:700;}
-.sg-l{font-size:10px;color:var(--txt3);margin-top:1px;}
-.install-banner{background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--r);padding:13px;margin-bottom:10px;}
-.ib-title{font-size:13px;font-weight:700;color:var(--acc-txt);margin-bottom:9px;display:flex;align-items:center;gap:6px;}
-.ib-step{display:flex;align-items:flex-start;gap:8px;margin-bottom:7px;}
-.ib-num{width:18px;height:18px;border-radius:50%;background:var(--acc);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
-.ib-txt{font-size:12px;color:var(--txt2);line-height:1.45;}
-#toast{position:fixed;bottom:calc(var(--safe-bot)+72px);left:50%;transform:translateX(-50%) translateY(8px);background:var(--txt);color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:all .2s;pointer-events:none;white-space:nowrap;z-index:999;}
+.tag-general{background:var(--surf2);color:var(--txt2);}
+.tag-mastered{background:var(--grn-dim);color:var(--grn-txt);}
+
+/* Word list */
+.word-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--surf);border-radius:var(--rs);border:1px solid var(--bord);margin-bottom:8px;cursor:pointer;transition:border-color .15s;}
+.word-item:active{border-color:var(--acc);}
+.word-main{flex:1;}
+.word-en{font-size:15px;font-weight:600;}
+.word-fr{font-size:13px;color:var(--txt2);margin-top:2px;}
+.word-check{color:var(--grn);font-size:18px;}
+
+/* Search */
+.search-wrap{position:relative;margin-bottom:14px;}
+.search-wrap input{padding-left:36px;}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt3);}
+
+/* Flash card */
+#flash-card{background:var(--surf);border-radius:16px;border:1px solid var(--bord);padding:40px 24px;text-align:center;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:16px;cursor:pointer;}
+.flash-word{font-size:28px;font-weight:700;margin-bottom:8px;}
+.flash-hint{font-size:13px;color:var(--txt3);}
+.flash-answer{font-size:20px;color:var(--txt2);margin-top:16px;padding-top:16px;border-top:1px solid var(--bord);}
+.flash-actions{display:flex;gap:10px;}
+.flash-actions .btn{flex:1;justify-content:center;}
+
+/* Stats */
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bord);}
+.stat-row:last-child{border-bottom:none;}
+.stat-val{font-size:20px;font-weight:700;color:var(--acc);}
+.progress-bar{height:8px;background:var(--surf2);border-radius:4px;overflow:hidden;margin-top:8px;}
+.progress-fill{height:100%;background:var(--grn);border-radius:4px;transition:width .4s;}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:flex-end;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surf);border-radius:20px 20px 0 0;padding:24px 20px calc(var(--safe-bot)+24px);width:100%;max-width:480px;margin:0 auto;max-height:85vh;overflow-y:auto;}
+.modal-handle{width:36px;height:4px;background:var(--bord2);border-radius:2px;margin:0 auto 20px;}
+
+/* Toast */
+#toast{position:fixed;bottom:calc(var(--safe-bot)+80px);left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:200;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-.setup-logo{text-align:center;padding:20px 0 8px;}
-.logo-letter{font-size:80px;color:var(--acc);line-height:1;font-weight:700;}
-.logo-name{font-size:26px;font-weight:300;letter-spacing:.2em;color:var(--txt);margin-top:4px;}
-.logo-sub{font-size:13px;color:var(--txt3);margin-top:6px;}
-.setup-step{display:flex;gap:12px;margin-bottom:14px;}
-.step-num{width:26px;height:26px;border-radius:50%;background:var(--acc-dim);color:var(--acc-txt);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
-.step-body h3{font-size:14px;font-weight:600;margin-bottom:3px;}
-.step-body p{font-size:13px;color:var(--txt2);line-height:1.5;}
-.step-body a{color:var(--acc);}
-.worker-badge{background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--rs);padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;display:flex;gap:8px;align-items:flex-start;}
+
+/* Loader */
+.loader{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--txt3);font-size:14px;gap:10px;}
+.spin{width:20px;height:20px;border:2px solid var(--bord2);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty{text-align:center;padding:40px 20px;color:var(--txt3);font-size:14px;}
+.section-title{font-size:12px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="screen"></div>
-  <nav id="nav" style="display:none">
-    <button class="nb" onclick="navigate('home')" id="nb-home">
-      <svg viewBox="0 0 24 24"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>Accueil
+  <nav id="nav">
+    <button class="nav-btn active" onclick="switchTab('glossary')" id="nav-glossary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Glossaire
     </button>
-    <button class="nb" onclick="navigate('flash')" id="nb-flash">
-      <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 12h8M12 8v8"/></svg>Révision
+    <button class="nav-btn" onclick="switchTab('flash')" id="nav-flash">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Révision
     </button>
-    <button class="nb" onclick="navigate('glossary')" id="nb-glossary">
-      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Glossaire
+    <button class="nav-btn" onclick="switchTab('add')" id="nav-add">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Ajouter
     </button>
-    <button class="nb" onclick="navigate('settings')" id="nb-settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Réglages
+    <button class="nav-btn" onclick="switchTab('stats')" id="nav-stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Stats
     </button>
   </nav>
 </div>
+
+<div id="modal-word" class="modal-bg" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
-const DB_KEY='lingua_words', CFG_KEY='lingua_config';
-const CATS=['Tous','Business','Général','Formel','Email','Réunion','Expression','Naval'];
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const WORKER_URL = 'https://wispy-sky-da60.alexandrebothereau.workers.dev';
 
-let cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}');
-let words=JSON.parse(localStorage.getItem(DB_KEY)||'[]');
-let curScreen='home', detailWord=null, gFilter='Tous', gSearch='';
-let flashQueue=[], flashIdx=0, flashRevealed=false, flashDir='mix';
-let capMode='word', wordDir='en', capBusy=false;
-let textWords=[], addedInText=new Set();
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let words = [];
+let currentTab = 'glossary';
+let flashList = [];
+let flashIdx = 0;
+let flashRevealed = false;
+let filterCat = 'all';
+let filterMastered = 'all';
+let searchQ = '';
 
-function saveWords(){localStorage.setItem(DB_KEY,JSON.stringify(words));}
-function saveCfg(){localStorage.setItem(CFG_KEY,JSON.stringify(cfg));}
-
-// ═══════════════════════════════════════
-//  NOTION — via Cloudflare Worker (zéro CORS)
-// ═══════════════════════════════════════
-function wurl(path){return (cfg.workerUrl||'').replace(/\/$/,'')+path;}
-
-async function notionGetWords(){
-  if(!cfg.workerUrl||!navigator.onLine)return null;
-  try{const r=await fetch(wurl('/words'));const d=await r.json();return d.words||null;}
-  catch(e){return null;}
-}
-async function notionAddWord(w){
-  if(!cfg.workerUrl||!navigator.onLine)return null;
-  try{const r=await fetch(wurl('/words'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(w)});const d=await r.json();return d.id||null;}
-  catch(e){return null;}
-}
-async function notionSetMastered(id,val){
-  if(!cfg.workerUrl||!navigator.onLine||!id)return;
-  try{await fetch(wurl('/words/'+id+'/mastered'),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mastered:val})});}
-  catch(e){}
+// ─── API ─────────────────────────────────────────────────────────────────────
+async function apiGet() {
+  const r = await fetch(`${WORKER_URL}/words`);
+  const d = await r.json();
+  return d.words || [];
 }
 
-// ═══════════════════════════════════════
-//  TRADUCTION — Claude API
-// ═══════════════════════════════════════
-async function translateWord(word,dir){
-  const p=dir==='fr'
-    ?`Translate French to English for a naval professional: "${word}". JSON: {"en":"...","fr":"${word}","type":"Mot or Tournure","cat":"Business or Général or Formel or Email or Réunion or Expression or Naval","ex":"example EN","notes":"note FR"}`
-    :`Translate English to French for a naval professional: "${word}". JSON: {"en":"${word}","fr":"...","type":"Mot or Tournure","cat":"Business or Général or Formel or Email or Réunion or Expression or Naval","ex":"example EN","notes":"note FR"}`;
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,system:'Return ONLY valid JSON.',messages:[{role:'user',content:p}]})});
-    const d=await r.json();
-    const t=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    const s=t.indexOf('{'),e=t.lastIndexOf('}');
-    return s!==-1?JSON.parse(t.slice(s,e+1)):null;
-  }catch(e){return null;}
-}
-
-async function analyzeText(text){
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:'Return ONLY valid JSON array.',
-        messages:[{role:'user',content:`Extract 4-7 useful English words/expressions for a French naval professional from: "${text.slice(0,1000)}". JSON: [{"en":"...","fr":"...","cat":"Business or Naval or Email or Général","type":"Mot or Tournure","ex":"..."}]`}]})});
-    const d=await r.json();
-    const t=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    const s=t.indexOf('['),e=t.lastIndexOf(']');
-    return s!==-1?JSON.parse(t.slice(s,e+1)):[];
-  }catch(e){return[];}
-}
-
-// ═══════════════════════════════════════
-//  NAVIGATION & TOAST
-// ═══════════════════════════════════════
-function navigate(s,data){
-  curScreen=s;
-  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
-  const m={home:'home',flash:'flash',glossary:'glossary',detail:'glossary',settings:'settings'};
-  const nb=document.getElementById('nb-'+(m[s]||s));if(nb)nb.classList.add('on');
-  if(s==='detail'){detailWord=data;renderDetail();}
-  else if(s==='home')renderHome();
-  else if(s==='flash')renderFlash();
-  else if(s==='glossary')renderGlossary();
-  else if(s==='settings')renderSettings();
-  else if(s==='setup')renderSetup();
-  document.getElementById('screen').scrollTop=0;
-}
-let tT;
-function toast(m,d=2500){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>el.classList.remove('show'),d);}
-
-// ═══════════════════════════════════════
-//  SETUP
-// ═══════════════════════════════════════
-function renderSetup(){
-  document.getElementById('nav').style.display='none';
-  document.getElementById('screen').innerHTML=`
-  <div style="display:flex;flex-direction:column;gap:16px;padding-top:16px;">
-    <div class="setup-logo"><div class="logo-letter">L</div><div class="logo-name">LINGUA</div><div class="logo-sub">Ton anglais, partout, tout le temps.</div></div>
-    <div class="worker-badge">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span>Lingua se connecte à Notion via ton <strong>Cloudflare Worker</strong> — proxy gratuit qui évite les erreurs CORS. Déploiement en 5 min (voir README dans le ZIP).</span>
-    </div>
-    <div class="card" style="display:flex;flex-direction:column;gap:14px;">
-      <div class="setup-step"><div class="step-num">1</div><div class="step-body"><h3>Déploie ton Worker</h3><p>Suis le README du ZIP Lingua. Tu obtiens une URL :<br><code style="color:var(--acc);font-size:11px">https://lingua-notion-proxy.xxx.workers.dev</code></p></div></div>
-      <div class="setup-step" style="margin-bottom:4px"><div class="step-num">2</div><div class="step-body"><h3>Entre l'URL ci-dessous</h3></div></div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <label>URL du Cloudflare Worker</label>
-        <input type="url" id="sw" placeholder="https://lingua-notion-proxy.xxx.workers.dev" value="${cfg.workerUrl||''}">
-        <button class="btn btn-primary btn-full" onclick="saveSetup()">Connecter et tester</button>
-        <p id="ss" style="font-size:13px;color:var(--txt3);text-align:center;min-height:18px;"></p>
-      </div>
-    </div>
-    ${words.length>0?`<button class="btn btn-ghost btn-full" onclick="skipSetup()">Continuer sans sync (${words.length} mots en local)</button>`:''}
-  </div>`;
-}
-async function saveSetup(){
-  const url=document.getElementById('sw').value.trim();
-  if(!url){document.getElementById('ss').textContent='⚠️ URL requise.';return;}
-  cfg.workerUrl=url;saveCfg();
-  const st=document.getElementById('ss');
-  st.innerHTML='<span class="spinner"></span> Test…';
-  const ws=await notionGetWords();
-  if(ws!==null){words=ws.map(w=>({...w,mastered:!!w.mastered}));saveWords();cfg.setupDone=true;saveCfg();
-    st.textContent=`✅ Connecté — ${words.length} mots !`;
-    setTimeout(()=>{document.getElementById('nav').style.display='flex';navigate('home');},1000);
-  } else {st.textContent='⚠️ Impossible de joindre le Worker.';}
-}
-function skipSetup(){cfg.setupDone=true;saveCfg();document.getElementById('nav').style.display='flex';navigate('home');}
-
-// ═══════════════════════════════════════
-//  HOME
-// ═══════════════════════════════════════
-function renderHome(){
-  const today=new Date().toDateString();
-  const tw=words.filter(w=>w.addedDate===today).slice(0,5);
-  const m=words.filter(w=>w.mastered).length;
-  const r=words.filter(w=>!w.mastered).length;
-  document.getElementById('screen').innerHTML=`
-  <div style="display:flex;flex-direction:column;gap:13px;">
-    <div class="hhead"><div class="htitle">Bonjour Alex 👋</div><div class="streak">🔥 ${cfg.streak||0} jour${(cfg.streak||0)>1?'s':''}</div></div>
-    <div class="stats-row">
-      <div class="stat"><div class="stat-v">${words.length}</div><div class="stat-l">Total</div></div>
-      <div class="stat"><div class="stat-v" style="color:var(--grn)">${m}</div><div class="stat-l">Maîtrisés</div></div>
-      <div class="stat"><div class="stat-v" style="color:var(--acc)">${r}</div><div class="stat-l">À réviser</div></div>
-    </div>
-    <div class="card" id="cap-card">
-      <div class="cap-lbl">⚡ Capture rapide</div>
-      <div class="mode-toggle">
-        <button class="mt-btn on" onclick="setCapMode('word',this)" id="mode-word">📝 Mot</button>
-        <button class="mt-btn" onclick="setCapMode('text',this)" id="mode-text">📄 Email / texte</button>
-      </div>
-      <div id="cap-word">
-        <div class="dir-row">
-          <button class="dir-btn on" onclick="setWordDir('en',this)" id="dir-en">EN → FR</button>
-          <button class="dir-btn" onclick="setWordDir('fr',this)" id="dir-fr">FR → EN</button>
-        </div>
-        <div class="cap-row">
-          <input type="text" id="cap-input" placeholder="to liaise, milestone…" onkeydown="if(event.key==='Enter')doCapture()">
-          <button class="go-btn" onclick="doCapture()" id="cap-btn">→</button>
-        </div>
-        <div id="cap-result"></div>
-      </div>
-      <div id="cap-text" style="display:none;flex-direction:column;gap:8px;">
-        <textarea id="text-input" placeholder="Colle un email, sous-titres, paragraphe… Claude extrait les expressions à retenir." style="min-height:90px;font-size:13px;"></textarea>
-        <button class="btn btn-primary" onclick="doAnalyze()" id="analyze-btn" style="align-self:flex-end;padding:9px 14px;font-size:13px;">✨ Analyser</button>
-        <div id="text-result"></div>
-      </div>
-    </div>
-    ${tw.length>0?`<div class="slbl">Ajoutés aujourd'hui</div><div class="wlist">${tw.map(w=>`<div class="wi" onclick='navigate("detail",${JSON.stringify(w)})'><div class="dot ${w.mastered?'g':''}"></div><div class="wi-en">${w.en}</div><div class="wi-fr">${w.fr||''}</div></div>`).join('')}</div>`:''}
-    ${r>0?`<button class="btn btn-primary btn-full" onclick="navigate('flash')">⚡ Réviser ${r} mot${r>1?'s':''} →</button>`:''}
-    <button class="btn btn-ghost btn-full" onclick="doSync()" id="sync-btn">🔄 Synchroniser Notion</button>
-  </div>`;
-}
-
-function setCapMode(m,btn){
-  capMode=m;
-  document.querySelectorAll('#cap-card .mt-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
-  document.getElementById('cap-word').style.display=m==='word'?'block':'none';
-  document.getElementById('cap-text').style.display=m==='text'?'flex':'none';
-  if(document.getElementById('cap-result'))document.getElementById('cap-result').innerHTML='';
-  if(document.getElementById('text-result'))document.getElementById('text-result').innerHTML='';
-}
-function setWordDir(d,btn){
-  wordDir=d;
-  document.getElementById('dir-en').classList.toggle('on',d==='en');
-  document.getElementById('dir-fr').classList.toggle('on',d==='fr');
-  document.getElementById('cap-input').placeholder=d==='en'?'to liaise, milestone…':'en suspens, remonter…';
-  document.getElementById('cap-result').innerHTML='';
-}
-async function doCapture(){
-  const v=document.getElementById('cap-input').value.trim();if(!v||capBusy)return;
-  capBusy=true;const btn=document.getElementById('cap-btn');btn.innerHTML='<span class="spinner"></span>';
-  document.getElementById('cap-result').innerHTML='';
-  const t=await translateWord(v,wordDir);
-  btn.innerHTML='→';capBusy=false;
-  if(!t){document.getElementById('cap-result').innerHTML='<p style="font-size:13px;color:var(--red);margin-top:8px">Erreur de traduction.</p>';return;}
-  document.getElementById('cap-result').innerHTML=`
-    <div class="trans-box">
-      <div class="trans-en">${t.en}</div><div class="trans-fr">${t.fr}</div>
-      ${t.ex?`<div class="trans-ex">"${t.ex}"</div>`:''}
-      ${t.notes?`<div style="font-size:11px;color:var(--txt3);margin-bottom:10px">${t.notes}</div>`:''}
-      <div class="trans-btns">
-        <button class="btn btn-primary" style="padding:9px 14px;font-size:13px" onclick='saveWord(${JSON.stringify(t).replace(/'/g,"&#39;")})'>+ Sauvegarder</button>
-        <button class="btn btn-ghost" style="padding:9px 14px;font-size:13px" onclick="document.getElementById('cap-result').innerHTML='';document.getElementById('cap-input').value=''">Ignorer</button>
-      </div>
-    </div>`;
-}
-async function saveWord(w){
-  w.addedDate=new Date().toDateString();w.mastered=false;w.localId=Date.now();
-  words.unshift(w);saveWords();toast('✅ Sauvegardé !');
-  document.getElementById('cap-result').innerHTML='';document.getElementById('cap-input').value='';
-  renderHome();
-  const id=await notionAddWord(w);if(id){words[0].id=id;saveWords();}
-}
-async function doAnalyze(){
-  const v=document.getElementById('text-input').value.trim();if(!v||capBusy)return;
-  capBusy=true;addedInText=new Set();
-  const btn=document.getElementById('analyze-btn');btn.innerHTML='<span class="spinner"></span> Analyse…';btn.disabled=true;
-  document.getElementById('text-result').innerHTML='';
-  textWords=await analyzeText(v)||[];
-  btn.innerHTML='✨ Analyser';btn.disabled=false;capBusy=false;renderTextResult();
-}
-function renderTextResult(){
-  if(!textWords.length){document.getElementById('text-result').innerHTML='<p style="font-size:13px;color:var(--txt3)">Aucune expression trouvée.</p>';return;}
-  document.getElementById('text-result').innerHTML=`
-    <div class="analysis-box">
-      <div class="analysis-title">✨ ${textWords.length} expressions trouvées</div>
-      ${textWords.map((w,i)=>`<div class="wf-row"><div style="flex:1"><div class="wf-en">${w.en}</div><div class="wf-fr">${w.fr}</div></div>${addedInText.has(i)?`<span class="wf-added">✓ Ajouté</span>`:`<button class="wf-add" onclick="addTextWord(${i})">+ Ajouter</button>`}</div>`).join('')}
-      <button class="btn btn-green btn-full" style="margin-top:4px" onclick="addAllTextWords()">↓ Tout ajouter (${textWords.filter((_,i)=>!addedInText.has(i)).length})</button>
-    </div>`;
-}
-async function addTextWord(i){
-  addedInText.add(i);renderTextResult();
-  const w={...textWords[i],addedDate:new Date().toDateString(),mastered:false,localId:Date.now()};
-  words.unshift(w);saveWords();
-  const id=await notionAddWord(w);if(id){words[0].id=id;saveWords();}toast('Ajouté !');
-}
-async function addAllTextWords(){
-  const toAdd=textWords.filter((_,i)=>!addedInText.has(i));
-  textWords.forEach((_,i)=>addedInText.add(i));renderTextResult();
-  for(const w of toAdd){const nw={...w,addedDate:new Date().toDateString(),mastered:false,localId:Date.now()};words.unshift(nw);saveWords();const id=await notionAddWord(nw);if(id){words[0].id=id;saveWords();}}
-  toast(`✅ ${toAdd.length} mots ajoutés !`);
-}
-async function doSync(){
-  const btn=document.getElementById('sync-btn');if(btn)btn.innerHTML='<span class="spinner"></span> Sync…';
-  const ws=await notionGetWords();
-  if(ws&&ws.length>0){words=ws.map(w=>({...w,mastered:!!w.mastered}));saveWords();toast(`✅ ${words.length} mots synchronisés`);renderHome();}
-  else{toast('⚠️ Sync échouée — données locales conservées');if(btn)btn.innerHTML='🔄 Synchroniser Notion';}
-}
-
-// ═══════════════════════════════════════
-//  FLASHCARDS
-// ═══════════════════════════════════════
-function startFlash(){
-  let q=words.filter(w=>!w.mastered);if(!q.length)q=[...words];
-  if(cfg.navalFirst)q.sort((a,b)=>(b.cat==='Naval'?1:0)-(a.cat==='Naval'?1:0));else q.sort(()=>Math.random()-.5);
-  const sz=cfg.sessionSize==='Tous'?q.length:parseInt(cfg.sessionSize||20);
-  flashQueue=q.slice(0,sz);flashIdx=0;flashRevealed=false;
-}
-function renderFlash(){
-  const sc=document.getElementById('screen');
-  if(flashIdx===0||!flashQueue.length)startFlash();
-  if(!flashQueue.length){sc.innerHTML=`<div style="display:flex;flex-direction:column;gap:13px;padding-top:20px;"><div class="empty"><p style="font-size:40px;margin-bottom:10px">📚</p><p>Ajoute des mots depuis l'accueil.</p></div><button class="btn btn-primary btn-full" onclick="navigate('home')">Ajouter des mots</button></div>`;return;}
-  if(flashIdx>=flashQueue.length){sc.innerHTML=`<div style="display:flex;flex-direction:column;gap:13px;padding-top:20px;"><div class="empty"><p style="font-size:48px;margin-bottom:12px">🎉</p><p style="font-size:18px;font-weight:700;margin-bottom:8px">Session terminée !</p><p>Tu as révisé ${flashQueue.length} mot${flashQueue.length>1?'s':''}.</p></div><button class="btn btn-primary btn-full" onclick="startFlash();renderFlash()">Recommencer</button><button class="btn btn-ghost btn-full" onclick="navigate('home')">Retour</button></div>`;return;}
-  const w=flashQueue[flashIdx%flashQueue.length];
-  const dir=flashDir==='mix'?(Math.random()>.5?'en':'fr'):flashDir;
-  const q=dir==='en'?w.en:w.fr, a=dir==='en'?w.fr:w.en;
-  const pct=Math.round((flashIdx/flashQueue.length)*100);
-  sc.innerHTML=`
-  <div style="display:flex;flex-direction:column;gap:12px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;color:var(--txt3)">${flashIdx+1} / ${flashQueue.length}</span><span style="font-size:12px;color:var(--grn-txt)">${words.filter(x=>x.mastered).length} maîtrisés</span></div>
-    <div class="fpbar"><div class="fpfill" style="width:${pct}%"></div></div>
-    <div class="mode-toggle" style="margin-bottom:0">
-      <button class="mt-btn ${flashDir==='en'?'on':''}" onclick="flashDir='en';flashIdx=0;renderFlash()">EN → FR</button>
-      <button class="mt-btn ${flashDir==='fr'?'on':''}" onclick="flashDir='fr';flashIdx=0;renderFlash()">FR → EN</button>
-      <button class="mt-btn ${flashDir==='mix'?'on':''}" onclick="flashDir='mix';flashIdx=0;renderFlash()">Mixte</button>
-    </div>
-    <div class="flashcard" onclick="revealFlash()">
-      <div class="fc-dir">${dir==='en'?'EN → FR':'FR → EN'}</div>
-      <div class="fc-hint" id="fc-hint">Tap pour révéler</div>
-      <div class="fc-word">${q}</div>
-      <span class="fc-tag">${w.cat||''}</span>
-      <div id="fc-reveal" style="display:none" class="fc-reveal">
-        <div class="fc-fr">${a}</div>
-        ${cfg.showExamples!==false&&w.ex?`<div class="fc-ex">"${w.ex}"</div>`:''}
-      </div>
-    </div>
-    <div class="fc-btns" id="fc-btns" style="display:none">
-      <button class="btn-again" onclick="flashNext(false)">✕ À revoir</button>
-      <button class="btn-got" onclick="flashNext(true)">✓ Je sais !</button>
-    </div>
-    <p id="fc-tap" style="text-align:center;font-size:11px;color:var(--txt3)">Tap la carte pour voir la réponse</p>
-  </div>`;
-  flashRevealed=false;
-}
-function revealFlash(){
-  if(flashRevealed)return;flashRevealed=true;
-  document.getElementById('fc-reveal').style.display='block';
-  document.getElementById('fc-hint').textContent='Réponse';
-  document.getElementById('fc-btns').style.display='grid';
-  document.getElementById('fc-tap').style.display='none';
-}
-function flashNext(got){
-  const w=flashQueue[flashIdx%flashQueue.length];
-  if(got){const i=words.findIndex(x=>(x.id&&x.id===w.id)||(x.localId&&x.localId===w.localId));if(i!==-1){words[i].mastered=true;saveWords();notionSetMastered(w.id,true);}flashQueue.splice(flashIdx%flashQueue.length,1);}
-  else flashIdx++;
-  flashRevealed=false;renderFlash();
-}
-
-// ═══════════════════════════════════════
-//  GLOSSAIRE
-// ═══════════════════════════════════════
-function renderGlossary(){
-  const filtered=words.filter(w=>{
-    const mc=gFilter==='Tous'||w.cat===gFilter;
-    const q=gSearch.toLowerCase();
-    return mc&&(!q||(w.en||'').toLowerCase().includes(q)||(w.fr||'').toLowerCase().includes(q));
+async function apiAdd(word) {
+  const r = await fetch(`${WORKER_URL}/words`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(word)
   });
-  document.getElementById('screen').innerHTML=`
-  <div style="display:flex;flex-direction:column;gap:10px;">
-    <div class="swrap">
-      <span class="si">🔍</span>
-      <input type="text" placeholder="Rechercher…" value="${gSearch}" oninput="gSearch=this.value;renderGlossary()">
+  return r.json();
+}
+
+async function apiMastered(id, mastered) {
+  const r = await fetch(`${WORKER_URL}/words/${id}/mastered`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({mastered})
+  });
+  return r.json();
+}
+
+// ─── LOAD ─────────────────────────────────────────────────────────────────────
+async function loadWords() {
+  renderGlossaryLoading();
+  try {
+    words = await apiGet();
+    renderTab();
+  } catch(e) {
+    document.getElementById('screen').innerHTML = `<div class="empty">❌ Erreur de connexion au serveur.<br><br><button class="btn btn-primary" onclick="loadWords()">Réessayer</button></div>`;
+  }
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  ['glossary','flash','add','stats'].forEach(t => {
+    document.getElementById(`nav-${t}`).classList.toggle('active', t === tab);
+  });
+  if (tab === 'flash') resetFlash();
+  renderTab();
+}
+
+function renderTab() {
+  switch(currentTab) {
+    case 'glossary': renderGlossary(); break;
+    case 'flash':    renderFlash();    break;
+    case 'add':      renderAdd();      break;
+    case 'stats':    renderStats();    break;
+  }
+}
+
+// ─── GLOSSARY ─────────────────────────────────────────────────────────────────
+function renderGlossaryLoading() {
+  document.getElementById('screen').innerHTML = `<div class="loader"><div class="spin"></div>Chargement depuis Notion…</div>`;
+}
+
+function renderGlossary() {
+  let filtered = words.filter(w => {
+    const q = searchQ.toLowerCase();
+    const matchQ = !q || w.word.toLowerCase().includes(q) || (w.example||'').toLowerCase().includes(q);
+    const matchCat = filterCat === 'all' || (w.category||'').toLowerCase() === filterCat.toLowerCase();
+    const matchM = filterMastered === 'all' || (filterMastered === 'yes' ? w.mastered : !w.mastered);
+    return matchQ && matchCat && matchM;
+  });
+
+  const cats = [...new Set(words.map(w => w.category).filter(Boolean))].sort();
+
+  document.getElementById('screen').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:20px;font-weight:700">Glossaire</div>
+        <div style="font-size:13px;color:var(--txt3)">${filtered.length} / ${words.length} mots</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadWords()">↻ Sync</button>
     </div>
-    <div class="chips">${CATS.map(c=>`<button class="chip ${c===gFilter?'on':''}" onclick="gFilter='${c}';renderGlossary()">${c}</button>`).join('')}</div>
-    <div>${filtered.length===0?`<div class="empty">Aucun mot trouvé.</div>`:filtered.map(w=>`<div class="gword ${w.mastered?'m':''}" onclick='navigate("detail",${JSON.stringify(w)})'>
-      <div class="gw-en">${w.en}</div><div class="gw-fr">${w.fr||''}</div>
-      <div class="gw-tags">
-        ${w.cat?`<span class="tag ${w.cat==='Naval'?'tag-naval':'tag-cat'}">${w.cat}</span>`:''}
-        ${w.type?`<span class="tag tag-cat">${w.type}</span>`:''}
-        ${w.mastered?`<span class="tag tag-ok">✓ Maîtrisé</span>`:''}
-      </div></div>`).join('')}</div>
-  </div>`;
-}
 
-// ═══════════════════════════════════════
-//  DETAIL
-// ═══════════════════════════════════════
-function renderDetail(){
-  const w=detailWord;
-  document.getElementById('screen').innerHTML=`
-  <div style="display:flex;flex-direction:column;gap:12px;">
-    <button class="det-back" onclick="navigate('glossary')">← Glossaire</button>
-    <div><div class="det-en">${w.en||''}</div><div class="det-fr">${w.fr||''}</div></div>
-    <div class="det-meta">
-      ${w.cat?`<div class="det-m"><div class="det-ml">Catégorie</div><div class="det-mv">${w.cat}</div></div>`:''}
-      ${w.type?`<div class="det-m"><div class="det-ml">Type</div><div class="det-mv">${w.type}</div></div>`:''}
+    <div class="search-wrap">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" placeholder="Rechercher…" value="${searchQ}" oninput="searchQ=this.value;renderGlossary()">
     </div>
-    ${w.ex?`<div><div class="det-slbl">Exemple</div><div class="det-box ex">"${w.ex}"</div></div>`:''}
-    ${w.notes?`<div><div class="det-slbl">Notes</div><div class="det-box">${w.notes}</div></div>`:''}
-    <button class="btn ${w.mastered?'btn-red':'btn-green'} btn-full" onclick="toggleMastered()">
-      ${w.mastered?'↩ Marquer à réviser':'✓ Marquer comme maîtrisé'}
-    </button>
-  </div>`;
-}
-function toggleMastered(){
-  const v=!detailWord.mastered;
-  const i=words.findIndex(x=>(x.id&&x.id===detailWord.id)||(x.localId&&x.localId===detailWord.localId));
-  if(i!==-1){words[i].mastered=v;detailWord=words[i];saveWords();}
-  notionSetMastered(detailWord.id,v);
-  toast(v?'✅ Maîtrisé !':'↩ Remis en révision');renderDetail();
-}
 
-// ═══════════════════════════════════════
-//  SETTINGS
-// ═══════════════════════════════════════
-function renderSettings(){
-  const m=words.filter(w=>w.mastered).length;
-  const pct=words.length?Math.round(m/words.length*100):0;
-  document.getElementById('screen').innerHTML=`
-  <div style="display:flex;flex-direction:column;gap:0;">
-    <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Réglages</div>
-    <div style="font-size:12px;color:var(--txt3);margin-bottom:14px;">Lingua v1.0</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">
+      <button class="btn btn-sm ${filterMastered==='all'?'btn-primary':'btn-ghost'}" onclick="filterMastered='all';renderGlossary()">Tous</button>
+      <button class="btn btn-sm ${filterMastered==='no'?'btn-primary':'btn-ghost'}" onclick="filterMastered='no';renderGlossary()">À réviser</button>
+      <button class="btn btn-sm ${filterMastered==='yes'?'btn-primary':'btn-ghost'}" onclick="filterMastered='yes';renderGlossary()">Maîtrisés</button>
+      ${cats.map(c => `<button class="btn btn-sm ${filterCat===c?'btn-primary':'btn-ghost'}" onclick="filterCat=filterCat==='${c}'?'all':'${c}';renderGlossary()">${c}</button>`).join('')}
+    </div>
 
-    <div class="section">
-      <div class="sec-head"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Ma progression</span></div>
-      <div style="padding:14px;">
-        <div class="stats-grid2">
-          <div class="sg"><div class="sg-v">${words.length}</div><div class="sg-l">Total</div></div>
-          <div class="sg"><div class="sg-v" style="color:var(--grn)">${m}</div><div class="sg-l">Maîtrisés</div></div>
-          <div class="sg"><div class="sg-v" style="color:var(--acc)">${words.length-m}</div><div class="sg-l">À réviser</div></div>
-          <div class="sg"><div class="sg-v" style="color:var(--amb)">${pct}%</div><div class="sg-l">Progression</div></div>
+    ${filtered.length === 0 ? '<div class="empty">Aucun mot trouvé</div>' :
+      filtered.map(w => `
+        <div class="word-item" onclick="openWord('${w.id}')">
+          <div class="word-main">
+            <div class="word-en">${w.word}</div>
+            ${w.example ? `<div class="word-fr">${w.example}</div>` : ''}
+            ${w.category ? `<span class="tag tag-${w.category==='Naval'?'naval':'general'}" style="margin-top:4px;display:inline-block">${w.category}</span>` : ''}
+          </div>
+          ${w.mastered ? '<span class="word-check">✓</span>' : ''}
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--txt3);margin-bottom:5px;"><span>Progression globale</span><span style="color:var(--grn-txt);font-weight:700">${m} / ${words.length}</span></div>
-        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
-      </div>
-    </div>
-
-    <div class="section" style="margin-bottom:10px;">
-      <div class="sec-head"><svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg><span>Connexion Notion</span></div>
-      <div class="srow">
-        <div class="srow-icon" style="background:#fff7ed;font-size:18px;">☁️</div>
-        <div class="srow-body"><div class="srow-lbl">Cloudflare Worker</div><div class="srow-sub" style="color:${cfg.workerUrl?'var(--grn-txt)':'var(--red-txt)'}">${cfg.workerUrl?'✓ Connecté':'⚠️ Non configuré'}</div></div>
-        <button class="btn btn-ghost" style="padding:7px 12px;font-size:12px;" onclick="editWorkerUrl()">Modifier</button>
-      </div>
-      <div class="srow">
-        <div class="srow-icon" style="background:var(--grn-dim);font-size:16px;">🔄</div>
-        <div class="srow-body"><div class="srow-lbl">Sync au démarrage</div></div>
-        <button class="toggle ${cfg.autoSync!==false?'on':'off'}" onclick="toggleCfg('autoSync',this)" aria-label="Sync auto"></button>
-      </div>
-      <div style="padding:8px 14px 12px;">
-        <button class="btn btn-ghost btn-full" style="font-size:13px" onclick="doSyncSettings()">🔄 Synchroniser maintenant</button>
-      </div>
-    </div>
-
-    <div class="section" style="margin-bottom:10px;">
-      <div class="sec-head"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 12h8M12 8v8"/></svg><span>Révision</span></div>
-      <div class="srow">
-        <div class="srow-icon" style="background:var(--acc-dim);font-size:16px;">🔢</div>
-        <div class="srow-body"><div class="srow-lbl">Mots par session</div></div>
-        <select class="sel-pill" onchange="cfg.sessionSize=this.value;saveCfg();toast('Sauvegardé')">
-          <option ${cfg.sessionSize==='10'?'selected':''}>10</option>
-          <option ${!cfg.sessionSize||cfg.sessionSize==='20'?'selected':''}>20</option>
-          <option ${cfg.sessionSize==='30'?'selected':''}>30</option>
-          <option ${cfg.sessionSize==='Tous'?'selected':''}>Tous</option>
-        </select>
-      </div>
-      <div class="srow">
-        <div class="srow-icon" style="background:var(--grn-dim);font-size:16px;">🔀</div>
-        <div class="srow-body"><div class="srow-lbl">Direction par défaut</div></div>
-        <select class="sel-pill" onchange="cfg.flashDir=this.value;flashDir=this.value;saveCfg();toast('Sauvegardé')">
-          <option value="en" ${cfg.flashDir==='en'?'selected':''}>EN → FR</option>
-          <option value="fr" ${cfg.flashDir==='fr'?'selected':''}>FR → EN</option>
-          <option value="mix" ${!cfg.flashDir||cfg.flashDir==='mix'?'selected':''}>Mixte</option>
-        </select>
-      </div>
-      <div class="srow">
-        <div class="srow-icon" style="background:#fbeaf0;font-size:16px;">👁</div>
-        <div class="srow-body"><div class="srow-lbl">Afficher exemples</div><div class="srow-sub">Pendant la révision</div></div>
-        <button class="toggle ${cfg.showExamples!==false?'on':'off'}" onclick="toggleCfg('showExamples',this)" aria-label="Exemples"></button>
-      </div>
-      <div class="srow">
-        <div class="srow-icon" style="background:var(--acc-dim);font-size:16px;">⚓</div>
-        <div class="srow-body"><div class="srow-lbl">Priorité Naval</div><div class="srow-sub">Réviser en premier</div></div>
-        <button class="toggle ${cfg.navalFirst?'on':'off'}" onclick="toggleCfg('navalFirst',this)" aria-label="Naval"></button>
-      </div>
-    </div>
-
-    <div class="install-banner">
-      <div class="ib-title">📱 Installer l'app</div>
-      <div class="ib-step"><div class="ib-num">1</div><div class="ib-txt"><strong>iPhone :</strong> Safari → Partager → "Sur l'écran d'accueil"</div></div>
-      <div class="ib-step" style="margin-bottom:0"><div class="ib-num">2</div><div class="ib-txt"><strong>Mac / PC :</strong> Chrome/Edge → icône ⊕ dans la barre → Installer</div></div>
-    </div>
-
-    <div class="section" style="margin-bottom:10px;">
-      <div class="sec-head"><svg viewBox="0 0 24 24" style="stroke:var(--red)"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span style="color:var(--red)">Zone dangereuse</span></div>
-      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
-        <button class="btn btn-red btn-full" onclick="if(confirm('Effacer toutes les données locales ?')){words=[];saveWords();toast('Effacé');renderSettings();}">🗑 Effacer les données locales</button>
-        <button class="btn btn-ghost btn-full" onclick="if(confirm('Réinitialiser ?')){cfg={};saveCfg();document.getElementById('nav').style.display='none';navigate('setup');}">⚡ Réinitialiser la connexion</button>
-      </div>
-    </div>
-    <div style="text-align:center;font-size:11px;color:var(--txt3);padding:8px 0 16px;">Lingua v1.0 · Alexandre Bothereau · CMN Cherbourg</div>
-  </div>`;
+      `).join('')}
+  `;
 }
-function toggleCfg(k,btn){cfg[k]=!cfg[k];saveCfg();btn.classList.toggle('on',cfg[k]);btn.classList.toggle('off',!cfg[k]);toast(cfg[k]?'Activé':'Désactivé');}
-async function doSyncSettings(){toast('Synchronisation…');const ws=await notionGetWords();if(ws&&ws.length>0){words=ws.map(w=>({...w,mastered:!!w.mastered}));saveWords();toast(`✅ ${words.length} mots`);renderSettings();}else toast('⚠️ Sync échouée');}
-function editWorkerUrl(){const u=prompt('URL du Cloudflare Worker :',cfg.workerUrl||'');if(u!==null){cfg.workerUrl=u;saveCfg();toast('URL enregistrée');renderSettings();}}
 
-// ═══════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
-if(cfg.flashDir)flashDir=cfg.flashDir;
-if(!cfg.setupDone){renderSetup();}
-else{
-  document.getElementById('nav').style.display='flex';navigate('home');
-  if(navigator.onLine&&cfg.autoSync!==false)notionGetWords().then(ws=>{if(ws&&ws.length>0){words=ws.map(w=>({...w,mastered:!!w.mastered}));saveWords();renderHome();}});
+function openWord(id) {
+  const w = words.find(x => x.id === id);
+  if (!w) return;
+  document.getElementById('modal-content').innerHTML = `
+    <div style="font-size:24px;font-weight:700;margin-bottom:6px">${w.word}</div>
+    ${w.category ? `<span class="tag tag-${w.category==='Naval'?'naval':'general'}">${w.category}</span>` : ''}
+    ${w.example ? `<div style="margin-top:16px"><div class="section-title">Exemple / Contexte</div><div style="font-size:15px;color:var(--txt2)">${w.example}</div></div>` : ''}
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn ${w.mastered?'btn-ghost':'btn-success'} btn-sm" onclick="toggleMastered('${w.id}')">
+        ${w.mastered ? '↩ Remettre à réviser' : '✓ Marquer maîtrisé'}
+      </button>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn btn-ghost btn-sm btn-full" onclick="closeModal()">Fermer</button>
+    </div>
+  `;
+  document.getElementById('modal-word').classList.add('open');
 }
+
+async function toggleMastered(id) {
+  const w = words.find(x => x.id === id);
+  if (!w) return;
+  w.mastered = !w.mastered;
+  closeModal();
+  toast(w.mastered ? '✓ Marqué maîtrisé' : '↩ Remis à réviser');
+  try {
+    await apiMastered(id, w.mastered);
+    renderTab();
+  } catch(e) {
+    w.mastered = !w.mastered; // rollback
+    toast('Erreur de sync');
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal-word').classList.remove('open');
+}
+
+// ─── FLASH ────────────────────────────────────────────────────────────────────
+function resetFlash() {
+  flashList = [...words.filter(w => !w.mastered)].sort(() => Math.random() - .5);
+  if (flashList.length === 0) flashList = [...words].sort(() => Math.random() - .5);
+  flashIdx = 0;
+  flashRevealed = false;
+}
+
+function renderFlash() {
+  if (words.length === 0) {
+    document.getElementById('screen').innerHTML = `<div class="empty">Aucun mot à réviser.<br>Ajoute des mots d'abord !</div>`;
+    return;
+  }
+
+  const w = flashList[flashIdx];
+  if (!w) {
+    document.getElementById('screen').innerHTML = `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:40px;margin-bottom:16px">🎉</div>
+        <div style="font-size:20px;font-weight:700;margin-bottom:8px">Session terminée !</div>
+        <div style="color:var(--txt2);margin-bottom:24px">${flashList.length} mots révisés</div>
+        <button class="btn btn-primary" onclick="resetFlash();renderFlash()">Recommencer</button>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('screen').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:20px;font-weight:700">Révision</div>
+      <div style="font-size:13px;color:var(--txt3)">${flashIdx + 1} / ${flashList.length}</div>
+    </div>
+    <div class="progress-bar" style="margin-bottom:20px"><div class="progress-fill" style="width:${(flashIdx/flashList.length)*100}%"></div></div>
+
+    <div id="flash-card" onclick="revealFlash()">
+      <div class="flash-word">${w.word}</div>
+      <div class="flash-hint">${flashRevealed ? '' : 'Toucher pour révéler'}</div>
+      ${flashRevealed && w.example ? `<div class="flash-answer">${w.example}</div>` : ''}
+      ${flashRevealed ? `<div class="flash-hint" style="margin-top:8px">${w.category || ''}</div>` : ''}
+    </div>
+
+    ${flashRevealed ? `
+      <div class="flash-actions">
+        <button class="btn btn-danger" onclick="flashNext(false)">↩ À revoir</button>
+        <button class="btn btn-success" onclick="flashNext(true)">✓ Je sais</button>
+      </div>
+    ` : `<button class="btn btn-ghost btn-full" onclick="flashNext(null)">Passer →</button>`}
+  `;
+}
+
+function revealFlash() {
+  if (!flashRevealed) { flashRevealed = true; renderFlash(); }
+}
+
+async function flashNext(knew) {
+  const w = flashList[flashIdx];
+  if (knew === true && !w.mastered) {
+    w.mastered = true;
+    apiMastered(w.id, true).catch(() => {});
+  }
+  flashIdx++;
+  flashRevealed = false;
+  renderFlash();
+}
+
+// ─── ADD ──────────────────────────────────────────────────────────────────────
+function renderAdd() {
+  const cats = [...new Set(words.map(w => w.category).filter(Boolean))].sort();
+  document.getElementById('screen').innerHTML = `
+    <div style="font-size:20px;font-weight:700;margin-bottom:20px">Ajouter un mot</div>
+
+    <div class="field">
+      <label>Mot ou expression en anglais *</label>
+      <input type="text" id="add-word" placeholder="e.g. Outstanding issue" autofocus>
+    </div>
+    <div class="field">
+      <label>Catégorie</label>
+      <select id="add-cat">
+        <option value="">Sans catégorie</option>
+        ${cats.map(c => `<option value="${c}">${c}</option>`).join('')}
+        <option value="Naval">Naval</option>
+        <option value="Général">Général</option>
+        <option value="Business">Business</option>
+        <option value="Série/Film">Série/Film</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Exemple ou contexte</label>
+      <textarea id="add-example" placeholder="Phrase d'exemple, contexte d'utilisation…"></textarea>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="submitAdd()" id="add-btn">Ajouter dans Notion</button>
+
+    <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--bord)">
+      <div class="section-title" style="margin-bottom:12px">Analyser un texte</div>
+      <textarea id="text-input" placeholder="Colle un texte (email, série, article…) pour extraire les expressions utiles" style="margin-bottom:10px"></textarea>
+      <button class="btn btn-ghost btn-full" onclick="analyzeText()">🔍 Extraire les expressions</button>
+      <div id="extract-result"></div>
+    </div>
+  `;
+}
+
+async function submitAdd() {
+  const word = document.getElementById('add-word').value.trim();
+  const category = document.getElementById('add-cat').value;
+  const example = document.getElementById('add-example').value.trim();
+  if (!word) { toast('Mot requis'); return; }
+
+  const btn = document.getElementById('add-btn');
+  btn.textContent = 'Envoi…';
+  btn.disabled = true;
+
+  try {
+    const res = await apiAdd({word, category, example});
+    if (res.success) {
+      words.push(res.word);
+      toast('✓ Ajouté dans Notion');
+      renderAdd();
+    } else {
+      toast('Erreur : ' + (res.error || 'inconnue'));
+      btn.textContent = 'Ajouter dans Notion';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    toast('Erreur de connexion');
+    btn.textContent = 'Ajouter dans Notion';
+    btn.disabled = false;
+  }
+}
+
+async function analyzeText() {
+  const text = document.getElementById('text-input').value.trim();
+  if (!text) { toast('Colle un texte d\'abord'); return; }
+
+  document.getElementById('extract-result').innerHTML = `<div class="loader"><div class="spin"></div>Analyse en cours…</div>`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `Extrait les 5 à 8 expressions anglaises les plus utiles à apprendre dans ce texte. Pour chacune, donne l'expression et une courte explication en français. Réponds UNIQUEMENT en JSON valide, format: [{"word":"expression","example":"explication courte en français"}]. Texte: "${text}"`
+        }]
+      })
+    });
+    const data = await res.json();
+    const txt = data.content?.[0]?.text || '[]';
+    const items = JSON.parse(txt.replace(/```json|```/g,'').trim());
+
+    document.getElementById('extract-result').innerHTML = `
+      <div style="margin-top:16px">
+        <div class="section-title">Expressions extraites</div>
+        ${items.map((item,i) => `
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--bord)">
+            <div style="flex:1">
+              <div style="font-weight:600">${item.word}</div>
+              <div style="font-size:13px;color:var(--txt2)">${item.example}</div>
+            </div>
+            <button class="btn btn-success btn-sm" onclick="quickAdd('${item.word.replace(/'/g,"\\'")}','${item.example.replace(/'/g,"\\'")}')">+</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('extract-result').innerHTML = `<div class="empty">Erreur d'analyse</div>`;
+  }
+}
+
+async function quickAdd(word, example) {
+  try {
+    const res = await apiAdd({word, example, category: 'Général'});
+    if (res.success) { words.push(res.word); toast('✓ ' + word + ' ajouté'); }
+    else toast('Erreur');
+  } catch(e) { toast('Erreur de connexion'); }
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+function renderStats() {
+  const total = words.length;
+  const mastered = words.filter(w => w.mastered).length;
+  const pct = total ? Math.round((mastered/total)*100) : 0;
+  const cats = {};
+  words.forEach(w => { const c = w.category||'Sans catégorie'; cats[c] = (cats[c]||0)+1; });
+
+  document.getElementById('screen').innerHTML = `
+    <div style="font-size:20px;font-weight:700;margin-bottom:20px">Progression</div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px">
+        <div>
+          <div style="font-size:13px;color:var(--txt3)">Mots maîtrisés</div>
+          <div style="font-size:32px;font-weight:700">${mastered} <span style="font-size:16px;color:var(--txt3)">/ ${total}</span></div>
+        </div>
+        <div style="font-size:28px;font-weight:700;color:var(--grn)">${pct}%</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Par catégorie</div>
+      ${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,n]) => `
+        <div class="stat-row">
+          <span>${c}</span>
+          <span class="stat-val" style="font-size:16px">${n}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="margin-top:16px">
+      <button class="btn btn-primary btn-full" onclick="switchTab('flash')">Lancer une révision →</button>
+    </div>
+  `;
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadWords();
 </script>
 </body>
 </html>
