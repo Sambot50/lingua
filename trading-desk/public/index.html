@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Desk — Multi-Agents</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2330; --border: #2d333b;
+    --text: #e6edf3; --muted: #8b949e; --green: #3fb950; --red: #f85149;
+    --amber: #d29922; --blue: #58a6ff; --accent: #388bfd;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+  h2 { font-size: 1rem; margin-bottom: 10px; color: var(--blue); }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 18px; font-size: .9rem; }
+  .kpis b { display: block; font-size: 1.05rem; }
+  .kpis span { color: var(--muted); font-size: .75rem; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font-size: .9rem; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ok { background: var(--green); } button.ko { background: var(--red); } button.ghost { background: var(--panel2); border: 1px solid var(--border); }
+  .banner { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: .9rem; }
+  .banner.warn { background: #3a2d12; border: 1px solid var(--amber); color: #e3b341; }
+  .banner.err { background: #3a1518; border: 1px solid var(--red); color: #ff9088; }
+  .alert-card { background: var(--panel2); border: 1px solid var(--border); border-left: 4px solid var(--amber); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+  .alert-card.achat { border-left-color: var(--green); }
+  .alert-card.vente { border-left-color: var(--red); }
+  .alert-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .tag { font-size: .72rem; padding: 2px 8px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border); color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 10px 0; font-size: .85rem; }
+  .grid span { color: var(--muted); font-size: .72rem; display: block; }
+  ul { margin: 6px 0 6px 18px; font-size: .85rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: .75rem; }
+  .muted { color: var(--muted); font-size: .85rem; }
+  details { margin-bottom: 8px; }
+  summary { cursor: pointer; padding: 6px 0; color: var(--blue); font-size: .9rem; }
+  .report-block { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 8px 0; font-size: .85rem; }
+  .report-block h4 { font-size: .8rem; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  label { display: block; font-size: .8rem; color: var(--muted); margin: 10px 0 4px; }
+  input, select { width: 100%; max-width: 320px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-size: .9rem; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted); border-top-color: var(--blue); border-radius: 50%; animation: r 0.8s linear infinite; vertical-align: middle; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  .disclaimer { font-size: .75rem; color: var(--muted); text-align: center; margin: 20px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Trading Desk <span class="tag">Paper trading — multi-agents Claude</span></h1>
+  <div class="kpis" id="kpis"></div>
+</header>
+
+<div id="banners"></div>
+
+<section>
+  <div class="row" style="justify-content: space-between;">
+    <div>
+      <h2 style="margin-bottom:4px;">Analyse des marchés</h2>
+      <div class="muted" id="lastAnalysis">Aucune analyse effectuée pour le moment.</div>
+    </div>
+    <button id="analyzeBtn" onclick="startAnalysis()">🔍 Lancer une analyse</button>
+  </div>
+</section>
+
+<section>
+  <h2>🔔 Alertes — ordres en attente de ta validation</h2>
+  <div id="pendingAlerts"><p class="muted">Aucune alerte en attente.</p></div>
+  <details>
+    <summary>Historique des alertes traitées</summary>
+    <div id="pastAlerts"></div>
+  </details>
+</section>
+
+<section>
+  <h2>📈 Positions ouvertes</h2>
+  <div id="positions"><p class="muted">Aucune position ouverte.</p></div>
+</section>
+
+<section>
+  <h2>📒 Trades clôturés</h2>
+  <div id="closedTrades"><p class="muted">Aucun trade clôturé.</p></div>
+</section>
+
+<section>
+  <h2>🧠 Rapports des agents</h2>
+  <div id="reports"><p class="muted">Lance une analyse pour voir les rapports détaillés des 4 agents.</p></div>
+</section>
+
+<section>
+  <h2>⚙️ Réglages</h2>
+  <div class="row">
+    <div>
+      <label>Risque par trade (% du capital, 0,5 à 5)</label>
+      <input type="number" id="cfgRisk" step="0.5" min="0.5" max="5">
+    </div>
+    <div>
+      <label>Ratio gain/risque du take-profit</label>
+      <input type="number" id="cfgRR" step="0.5" min="1.5" max="5">
+    </div>
+    <div>
+      <label>Paires suivies (séparées par des virgules)</label>
+      <input type="text" id="cfgPairs" placeholder="BTC/USDT, ETH/USDT">
+    </div>
+    <div>
+      <label>Analyse automatique (minutes, 0 = manuel)</label>
+      <input type="number" id="cfgAuto" step="15" min="0" max="1440">
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px;">
+    <button onclick="saveConfig()">Enregistrer les réglages</button>
+    <button class="ghost" onclick="resetPortfolio()">♻️ Réinitialiser le portefeuille fictif</button>
+  </div>
+  <p class="muted" style="margin-top:10px;">💡 Chaque analyse interroge l'API Claude (4 agents × nombre de paires). En mode manuel, tu contrôles totalement les coûts.</p>
+</section>
+
+<p class="disclaimer">⚠️ Application de paper trading (argent fictif, prix réels) à but éducatif.
+Rien ici ne constitue un conseil en investissement. Les crypto-actifs sont extrêmement volatils.</p>
+
+<script>
+let state = null;
+const fmt = (v, d = 2) => v == null ? "—" : Number(v).toLocaleString("fr-FR", { maximumFractionDigits: d });
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pnlCls = (v) => v >= 0 ? "pos" : "neg";
+
+async function api(path, opts) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Erreur serveur");
+  return data;
+}
+
+async function refresh() {
+  try {
+    state = await api("/api/state");
+    render();
+  } catch (e) { /* serveur momentanément injoignable */ }
+}
+
+function render() {
+  const s = state;
+  const sum = s.portfolio.summary;
+
+  document.getElementById("kpis").innerHTML = `
+    <div><span>Valeur totale</span><b>${fmt(sum.total)} USDT</b></div>
+    <div><span>Cash disponible</span><b>${fmt(sum.cash)} USDT</b></div>
+    <div><span>P&amp;L global</span><b class="${pnlCls(sum.pnlTotal)}">${sum.pnlTotal >= 0 ? "+" : ""}${fmt(sum.pnlTotal)} USDT (${fmt(sum.pnlPct)}%)</b></div>
+    <div><span>P&amp;L réalisé</span><b class="${pnlCls(sum.pnlRealise)}">${sum.pnlRealise >= 0 ? "+" : ""}${fmt(sum.pnlRealise)} USDT</b></div>`;
+
+  // Bannières
+  let banners = "";
+  if (!s.apiKeyConfigured) {
+    banners += `<div class="banner warn">⚠️ Clé API Anthropic non configurée. Définis la variable d'environnement <b>ANTHROPIC_API_KEY</b> puis redémarre le serveur — les agents ne peuvent pas travailler sans elle.</div>`;
+  }
+  if (s.lastError) {
+    banners += `<div class="banner err">❌ ${esc(s.lastError)}</div>`;
+  }
+  document.getElementById("banners").innerHTML = banners;
+
+  // Statut d'analyse
+  const btn = document.getElementById("analyzeBtn");
+  btn.disabled = s.analysisInProgress || !s.apiKeyConfigured;
+  document.getElementById("lastAnalysis").innerHTML = s.analysisInProgress
+    ? `<span class="spin"></span> Analyse en cours… les 4 agents travaillent (1 à 3 minutes par paire).`
+    : s.lastAnalysisAt
+      ? `Dernière analyse : ${new Date(s.lastAnalysisAt).toLocaleString("fr-FR")} — paires : ${s.config.pairs.join(", ")}`
+      : `Aucune analyse effectuée pour le moment. Paires suivies : ${s.config.pairs.join(", ")}`;
+
+  // Alertes en attente
+  const pending = s.alerts.filter(a => a.status === "en_attente");
+  document.getElementById("pendingAlerts").innerHTML = pending.length === 0
+    ? `<p class="muted">Aucune alerte en attente. Le manager n'a proposé aucun ordre, ou tout a été traité.</p>`
+    : pending.map(alertCard).join("");
+
+  // Historique des alertes
+  const past = s.alerts.filter(a => a.status !== "en_attente").slice(0, 20);
+  document.getElementById("pastAlerts").innerHTML = past.length === 0
+    ? `<p class="muted">Rien pour le moment.</p>`
+    : `<table><tr><th>Date</th><th>Type</th><th>Paire</th><th>Décision</th><th>Prix exécuté</th></tr>` +
+      past.map(a => `<tr><td>${new Date(a.createdAt).toLocaleString("fr-FR")}</td>
+        <td>${a.type === "achat" ? "🟢 Achat" : "🔴 Vente"}</td><td>${esc(a.pair)}</td>
+        <td>${a.status === "validee" ? "✅ Validée" : a.status === "expiree" ? "⏰ Expirée" : "❌ Refusée"}</td>
+        <td>${a.executedPrice ? fmt(a.executedPrice) + " USDT" : "—"}</td></tr>`).join("") + `</table>`;
+
+  // Positions
+  const posList = s.portfolio.positions;
+  document.getElementById("positions").innerHTML = posList.length === 0
+    ? `<p class="muted">Aucune position ouverte.</p>`
+    : `<table><tr><th>Paire</th><th>Quantité</th><th>Entrée</th><th>Prix actuel</th><th>Stop-loss</th><th>Take-profit</th><th>P&amp;L latent</th><th></th></tr>` +
+      posList.map(p => {
+        const pnl = (p.lastPrice - p.entry) * p.qty;
+        const pnlPct = ((p.lastPrice - p.entry) / p.entry) * 100;
+        return `<tr><td><b>${esc(p.pair)}</b></td><td>${fmt(p.qty, 6)}</td><td>${fmt(p.entry)}</td>
+          <td>${fmt(p.lastPrice)}</td><td class="neg">${fmt(p.stopLoss)}</td><td class="pos">${fmt(p.takeProfit)}</td>
+          <td class="${pnlCls(pnl)}">${pnl >= 0 ? "+" : ""}${fmt(pnl)} USDT (${fmt(pnlPct)}%)</td>
+          <td><button class="ghost" onclick="closePos('${p.id}')">Clôturer</button></td></tr>`;
+      }).join("") + `</table>
+      <p class="muted" style="margin-top:8px;">Les stop-loss et take-profit validés avec l'ordre sont exécutés automatiquement (surveillance chaque minute).</p>`;
+
+  // Trades clôturés
+  const closed = s.portfolio.closedTrades.slice(0, 25);
+  document.getElementById("closedTrades").innerHTML = closed.length === 0
+    ? `<p class="muted">Aucun trade clôturé.</p>`
+    : `<table><tr><th>Paire</th><th>Entrée</th><th>Sortie</th><th>P&amp;L</th><th>Motif</th><th>Date</th></tr>` +
+      closed.map(t => `<tr><td><b>${esc(t.pair)}</b></td><td>${fmt(t.entry)}</td><td>${fmt(t.exitPrice)}</td>
+        <td class="${pnlCls(t.pnl)}">${t.pnl >= 0 ? "+" : ""}${fmt(t.pnl)} USDT (${fmt(t.pnlPct)}%)</td>
+        <td>${esc(t.reason)}</td><td>${new Date(t.closedAt).toLocaleString("fr-FR")}</td></tr>`).join("") + `</table>`;
+
+  // Rapports des agents
+  const reports = Object.entries(s.reports || {});
+  document.getElementById("reports").innerHTML = reports.length === 0
+    ? `<p class="muted">Lance une analyse pour voir les rapports détaillés des 4 agents.</p>`
+    : reports.map(([pair, r]) => reportBlock(pair, r)).join("");
+
+  // Réglages (ne pas écraser pendant la saisie)
+  for (const [id, val] of [["cfgRisk", s.config.riskPct], ["cfgRR", s.config.rewardRiskRatio], ["cfgAuto", s.config.autoIntervalMin]]) {
+    const el = document.getElementById(id);
+    if (document.activeElement !== el && el.value === "") el.value = val;
+  }
+  const pairsEl = document.getElementById("cfgPairs");
+  if (document.activeElement !== pairsEl && pairsEl.value === "") pairsEl.value = s.config.pairs.join(", ");
+}
+
+function alertCard(a) {
+  const plan = a.plan;
+  return `<div class="alert-card ${a.type}">
+    <div class="alert-head">
+      <b>${a.type === "achat" ? "🟢 Ordre d'ACHAT proposé" : "🔴 Clôture de position proposée"} — ${esc(a.pair)}</b>
+      <span class="tag">Confiance du manager : ${a.confiance}/100 · ${new Date(a.createdAt).toLocaleTimeString("fr-FR")}</span>
+    </div>
+    <p style="font-size:.9rem;">${esc(a.synthese)}</p>
+    ${plan ? `<div class="grid">
+      <div><span>Entrée estimée</span>${fmt(plan.entree)} USDT</div>
+      <div><span>Stop-loss</span>${fmt(plan.stopLoss)} USDT</div>
+      <div><span>Take-profit</span>${fmt(plan.takeProfit)} USDT</div>
+      <div><span>Quantité</span>${fmt(plan.quantite, 6)}</div>
+      <div><span>Montant investi</span>${fmt(plan.montantInvesti)} USDT</div>
+      <div><span>Risque max</span>${fmt(plan.risqueMax)} USDT (${plan.risquePctCapital}%)</div>
+    </div>` : ""}
+    ${a.argumentsPour?.length ? `<div style="font-size:.8rem;color:var(--green);">✔ ${a.argumentsPour.map(esc).join(" · ")}</div>` : ""}
+    ${a.argumentsContre?.length ? `<div style="font-size:.8rem;color:var(--red);margin-top:4px;">✘ ${a.argumentsContre.map(esc).join(" · ")}</div>` : ""}
+    <div class="row" style="margin-top:12px;">
+      <button class="ok" onclick="decide('${a.id}', 'approve')">✅ Valider l'ordre</button>
+      <button class="ko" onclick="decide('${a.id}', 'reject')">❌ Refuser</button>
+    </div>
+    <p class="muted" style="margin-top:8px;font-size:.75rem;">L'ordre sera exécuté au prix du marché au moment de ta validation.</p>
+  </div>`;
+}
+
+function reportBlock(pair, r) {
+  const t = r.technique, se = r.sentiment, rr = r.avisRisque, m = r.manager;
+  const biasIcon = (b) => b === "haussier" ? "📈" : b === "baissier" ? "📉" : "➖";
+  return `<details>
+    <summary><b>${esc(pair)}</b> — ${fmt(r.prix)} USDT · décision : <b>${esc(m.action)}</b> (${m.confiance}/100) · ${new Date(r.at).toLocaleString("fr-FR")}</summary>
+    <div class="report-block"><h4>🕹 Agent 4 — Manager</h4>
+      <p>${esc(m.synthese)}</p>
+      ${m.argumentsPour?.length ? `<ul>${m.argumentsPour.map(x => `<li class="pos">✔ ${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${m.argumentsContre?.length ? `<ul>${m.argumentsContre.map(x => `<li class="neg">✘ ${esc(x)}</li>`).join("")}</ul>` : ""}
+    </div>
+    <div class="report-block"><h4>📐 Agent 1 — Analyse technique</h4>
+      <p>${biasIcon(t.biais)} Biais <b>${esc(t.biais)}</b> (confiance ${t.confiance}/100) — ${esc(t.commentaire)}</p>
+      <ul>${(t.signaux || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <p class="muted">Support majeur : ${fmt(t.niveauxCles?.supportMajeur)} · Résistance majeure : ${fmt(t.niveauxCles?.resistanceMajeure)}</p>
+    </div>
+    <div class="report-block"><h4>📰 Agent 2 — Sentiment &amp; actualités</h4>
+      <p>${biasIcon(se.biais)} Biais <b>${esc(se.biais)}</b> (confiance ${se.confiance}/100) — ${esc(se.commentaire)}</p>
+      <ul>${(se.facteurs || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <p class="muted">Risque d'événement : ${esc(se.risqueEvenement)}</p>
+    </div>
+    <div class="report-block"><h4>🛡 Agent 3 — Gestion du risque</h4>
+      <p>${rr.valide ? '<span class="pos">✅ Plan validé</span>' : '<span class="neg">⛔ Plan rejeté</span>'} — ${esc(rr.commentaire)}</p>
+      ${rr.alertes?.length ? `<ul>${rr.alertes.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+    </div>
+  </details>`;
+}
+
+async function startAnalysis() {
+  try { await api("/api/analyze", { method: "POST" }); refresh(); }
+  catch (e) { alert(e.message); }
+}
+async function decide(id, action) {
+  try { await api(`/api/alerts/${id}/${action}`, { method: "POST" }); refresh(); }
+  catch (e) { alert(e.message); }
+}
+async function closePos(id) {
+  if (!confirm("Clôturer cette position au prix du marché ?")) return;
+  try { await api(`/api/positions/${id}/close`, { method: "POST" }); refresh(); }
+  catch (e) { alert(e.message); }
+}
+async function saveConfig() {
+  try {
+    await api("/api/config", {
+      method: "POST",
+      body: JSON.stringify({
+        riskPct: document.getElementById("cfgRisk").value,
+        rewardRiskRatio: document.getElementById("cfgRR").value,
+        autoIntervalMin: document.getElementById("cfgAuto").value,
+        pairs: document.getElementById("cfgPairs").value.split(",").map(p => p.trim()).filter(Boolean)
+      })
+    });
+    alert("Réglages enregistrés ✅");
+    refresh();
+  } catch (e) { alert(e.message); }
+}
+async function resetPortfolio() {
+  const capital = prompt("Nouveau capital fictif de départ (USDT) :", "10000");
+  if (!capital) return;
+  if (!confirm("Cela efface toutes les positions, alertes et l'historique. Continuer ?")) return;
+  try { await api("/api/portfolio/reset", { method: "POST", body: JSON.stringify({ initialCapital: Number(capital) }) }); refresh(); }
+  catch (e) { alert(e.message); }
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

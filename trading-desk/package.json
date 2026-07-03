@@ -1,0 +1,19 @@
+{
+  "name": "trading-desk",
+  "version": "1.0.0",
+  "description": "Application de trading crypto multi-agents (paper trading) propulsée par Claude",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "PAPER_FAKE_DATA=1 node server.js",
+    "test": "PAPER_FAKE_DATA=1 node test/run-tests.js && PAPER_FAKE_DATA=1 node test/pipeline-test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "express": "^4.21.0"
+  }
+}
