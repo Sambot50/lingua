@@ -1,6 +1,6 @@
 # 📊 Trading Desk — Application de trading multi-agents
 
-Application de **paper trading crypto** (argent fictif, prix réels) pilotée par 4 agents IA propulsés par Claude. **Aucun ordre n'est exécuté sans ta validation.**
+Application de **trading crypto** pilotée par 4 agents IA propulsés par Claude. **Aucun ordre n'est exécuté sans ta validation.** Trois modes : paper trading (défaut), testnet Binance, réel Binance.
 
 ## 🧠 Les 4 agents
 
@@ -63,6 +63,42 @@ Génère des données de marché synthétiques — pratique pour découvrir l'in
 - **Paires suivies** : jusqu'à 6 (défaut : BTC/USDT, ETH/USDT, SOL/USDT)
 - **Analyse automatique** : intervalle en minutes, 0 = manuel (défaut, pour maîtriser les coûts API)
 - **Ratio gain/risque** : position du take-profit (défaut : 2)
+- **Multiplicateur ATR** : distance du stop-loss (défaut : 1,5 × ATR)
+- **Confiance minimale du manager** : en dessous de ce seuil, aucune alerte n'est créée (défaut : 60)
+- **Mode de trading** : papier / réel (broker)
+
+## 📊 Journal de performance
+
+Calculé automatiquement sur les trades clôturés : taux de réussite, profit factor,
+espérance par trade, R moyen (gain rapporté au risque pris), drawdown maximal,
+statistiques par paire et par motif de sortie, calibration du manager (sa confiance
+moyenne sur les trades gagnants vs perdants). Utilise-le pour ajuster les réglages
+avant tout passage en réel.
+
+## 📱 Notifications Telegram (validation depuis ton téléphone)
+
+1. Sur Telegram, parle à **@BotFather** → `/newbot` → récupère le token
+2. Ajoute la variable d'environnement `TELEGRAM_BOT_TOKEN=123456:ABC...`
+3. Redémarre le serveur, puis **envoie n'importe quel message à ton bot** : il te répond
+   et ton compte est lié automatiquement
+
+Chaque alerte arrive alors sur ton téléphone avec les boutons **✅ Valider / ❌ Refuser**.
+
+## 🏦 Broker Binance (mode réel)
+
+Le connecteur pointe **par défaut sur le testnet Binance** (vraie API, argent fictif) :
+
+1. Crée des clés sur [testnet.binance.vision](https://testnet.binance.vision) (connexion GitHub)
+2. Variables d'environnement : `BINANCE_API_KEY=...` et `BINANCE_API_SECRET=...`
+3. Dans les réglages de l'interface, passe le mode de trading sur **Réel**
+
+Pour la **production (argent réel)** : clés API créées sur binance.com (permission
+« trading spot » uniquement, **jamais** de permission de retrait) + `BINANCE_LIVE=1`.
+
+⚠️ Important : les stop-loss/take-profit sont surveillés par ce serveur (vente au marché
+quand le niveau est touché). **Le serveur doit donc rester allumé en permanence en mode réel.**
+Ne passe en production qu'après plusieurs semaines de statistiques positives dans le journal
+de performance, et commence petit.
 
 ## 💰 Coûts API
 

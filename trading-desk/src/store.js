@@ -15,7 +15,10 @@ const DEFAULT_STATE = {
     initialCapital: 10000, // capital fictif en USDT
     model: "claude-opus-4-8",
     atrStopMultiplier: 1.5, // stop-loss = entrée - 1.5 × ATR
-    rewardRiskRatio: 2 // take-profit = 2 × la distance du stop
+    rewardRiskRatio: 2, // take-profit = 2 × la distance du stop
+    minConfidence: 60, // confiance minimale du manager pour créer une alerte
+    telegramChatId: "", // détecté automatiquement au premier message au bot
+    tradingMode: "papier" // "papier" | "reel" (broker Binance, testnet par défaut)
   },
   portfolio: {
     cash: 10000,

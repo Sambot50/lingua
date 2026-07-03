@@ -3,9 +3,20 @@
 import crypto from "crypto";
 import { loadState, saveState } from "./store.js";
 import { fetchPrice } from "./marketData.js";
+import { marketBuy, marketSell, isBrokerConfigured } from "./broker.js";
 
 function id() {
   return crypto.randomUUID().slice(0, 8);
+}
+
+function isLiveMode(s) {
+  return s.config.tradingMode === "reel" && isBrokerConfigured();
+}
+
+// Hook déclenché à chaque nouvelle alerte (notifications Telegram, etc.)
+const hooks = { onAlertCreated: null };
+export function setAlertHook(fn) {
+  hooks.onAlertCreated = fn;
 }
 
 export function createAlert(alert) {
@@ -19,6 +30,11 @@ export function createAlert(alert) {
   s.alerts.unshift(full);
   s.alerts = s.alerts.slice(0, 100);
   saveState();
+  if (hooks.onAlertCreated) {
+    Promise.resolve(hooks.onAlertCreated(full)).catch((e) =>
+      console.error("Hook alerte :", e.message)
+    );
+  }
   return full;
 }
 
@@ -33,6 +49,7 @@ export async function approveAlert(alertId) {
   if (!alert) throw new Error("Alerte introuvable.");
   if (alert.status !== "en_attente") throw new Error("Cette alerte a déjà été traitée.");
 
+  const live = isLiveMode(s);
   const price = await fetchPrice(alert.pair);
 
   if (alert.type === "achat") {
@@ -44,24 +61,37 @@ export async function approveAlert(alertId) {
       notional = s.portfolio.cash;
     }
     if (notional < 5) throw new Error("Cash insuffisant pour exécuter cet ordre.");
+
+    let entry = price;
+    if (live) {
+      // Exécution réelle : achat au marché pour le montant prévu
+      const fill = await marketBuy(alert.pair, notional);
+      qty = fill.qty;
+      entry = fill.avgPrice ?? price;
+      notional = fill.notional;
+    }
     s.portfolio.cash -= notional;
     s.portfolio.positions.push({
       id: id(),
       pair: alert.pair,
       qty,
-      entry: price,
+      entry,
       stopLoss: plan.stopLoss,
       takeProfit: plan.takeProfit,
-      lastPrice: price,
+      lastPrice: entry,
       openedAt: new Date().toISOString(),
-      alertId: alert.id
+      alertId: alert.id,
+      confiance: alert.confiance,
+      riskAtOpen: Math.round(qty * (entry - plan.stopLoss) * 100) / 100,
+      live
     });
-    alert.executedPrice = price;
+    alert.executedPrice = entry;
   } else if (alert.type === "vente") {
     const pos = s.portfolio.positions.find((p) => p.id === alert.positionId);
     if (!pos) throw new Error("La position à clôturer n'existe plus.");
-    doClosePosition(s, pos, price, "vente validée");
-    alert.executedPrice = price;
+    const exitPrice = await sellIfLive(pos, price);
+    doClosePosition(s, pos, exitPrice, "vente validée");
+    alert.executedPrice = exitPrice;
   }
 
   alert.status = "validee";
@@ -79,6 +109,13 @@ export function rejectAlert(alertId) {
   alert.decidedAt = new Date().toISOString();
   saveState();
   return alert;
+}
+
+// Vente réelle sur le broker si la position a été ouverte en mode réel
+async function sellIfLive(pos, fallbackPrice) {
+  if (!pos.live) return fallbackPrice;
+  const fill = await marketSell(pos.pair, pos.qty);
+  return fill.avgPrice ?? fallbackPrice;
 }
 
 function doClosePosition(s, pos, price, reason) {
@@ -103,7 +140,8 @@ export async function closePositionManually(positionId) {
   const pos = s.portfolio.positions.find((p) => p.id === positionId);
   if (!pos) throw new Error("Position introuvable.");
   const price = await fetchPrice(pos.pair);
-  doClosePosition(s, pos, price, "clôture manuelle");
+  const exitPrice = await sellIfLive(pos, price);
+  doClosePosition(s, pos, exitPrice, "clôture manuelle");
   saveState();
 }
 
@@ -116,12 +154,15 @@ export async function monitorPositions() {
       const price = await fetchPrice(pos.pair);
       pos.lastPrice = price;
       if (price <= pos.stopLoss) {
-        doClosePosition(s, pos, price, "stop-loss touché");
+        const exitPrice = await sellIfLive(pos, price);
+        doClosePosition(s, pos, exitPrice, "stop-loss touché");
       } else if (price >= pos.takeProfit) {
-        doClosePosition(s, pos, price, "take-profit atteint");
+        const exitPrice = await sellIfLive(pos, price);
+        doClosePosition(s, pos, exitPrice, "take-profit atteint");
       }
-    } catch {
-      // source de prix momentanément indisponible : on réessaiera au tick suivant
+    } catch (err) {
+      // prix ou broker momentanément indisponible : nouvel essai au tick suivant
+      console.error(`Surveillance ${pos.pair} :`, err.message);
     }
   }
   saveState();

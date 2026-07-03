@@ -9,9 +9,17 @@ import {
   closePositionManually,
   monitorPositions,
   expireOldAlerts,
-  portfolioSummary
+  portfolioSummary,
+  setAlertHook
 } from "./src/paperTrading.js";
 import { runFullAnalysis } from "./src/analysis.js";
+import { computePerformance } from "./src/performance.js";
+import { brokerInfo } from "./src/broker.js";
+import {
+  isTelegramConfigured,
+  startTelegramPolling,
+  notifyAlert
+} from "./src/telegram.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -30,10 +38,14 @@ app.get("/api/state", (req, res) => {
     },
     alerts: state.alerts,
     reports: state.reports,
+    performance: computePerformance(),
     lastAnalysisAt: state.lastAnalysisAt,
     analysisInProgress: state.analysisInProgress,
     lastError: state.lastError,
-    apiKeyConfigured: Boolean(process.env.ANTHROPIC_API_KEY)
+    apiKeyConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+    telegramConfigured: isTelegramConfigured(),
+    telegramLinked: Boolean(state.config.telegramChatId),
+    broker: brokerInfo()
   });
 });
 
@@ -68,7 +80,10 @@ app.post("/api/positions/:id/close", async (req, res) => {
 });
 
 app.post("/api/config", (req, res) => {
-  const { riskPct, pairs, autoIntervalMin, model, rewardRiskRatio } = req.body || {};
+  const {
+    riskPct, pairs, autoIntervalMin, model, rewardRiskRatio,
+    atrStopMultiplier, minConfidence, tradingMode
+  } = req.body || {};
   if (riskPct !== undefined) {
     const v = Number(riskPct);
     if (!(v >= 0.5 && v <= 5)) {
@@ -94,6 +109,23 @@ app.post("/api/config", (req, res) => {
   if (rewardRiskRatio !== undefined) {
     const v = Number(rewardRiskRatio);
     if (v >= 1.5 && v <= 5) state.config.rewardRiskRatio = v;
+  }
+  if (atrStopMultiplier !== undefined) {
+    const v = Number(atrStopMultiplier);
+    if (v >= 0.5 && v <= 4) state.config.atrStopMultiplier = v;
+  }
+  if (minConfidence !== undefined) {
+    const v = Number(minConfidence);
+    if (v >= 0 && v <= 95) state.config.minConfidence = v;
+  }
+  if (tradingMode !== undefined) {
+    if (tradingMode === "reel" && !brokerInfo().configured) {
+      return res.status(400).json({
+        error:
+          "Mode réel impossible : définis BINANCE_API_KEY et BINANCE_API_SECRET (testnet.binance.vision pour t'entraîner)."
+      });
+    }
+    if (["papier", "reel"].includes(tradingMode)) state.config.tradingMode = tradingMode;
   }
   saveState();
   res.json(state.config);
@@ -133,6 +165,13 @@ function scheduleAuto() {
   }
 }
 scheduleAuto();
+
+// Notifications Telegram : alertes envoyées avec boutons Valider/Refuser
+setAlertHook(notifyAlert);
+startTelegramPolling({
+  onApprove: (id) => approveAlert(id),
+  onReject: (id) => rejectAlert(id)
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

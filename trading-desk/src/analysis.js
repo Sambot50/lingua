@@ -67,7 +67,9 @@ async function analyzePair(pair, news, fearGreed) {
   };
 
   // Création de l'alerte selon la décision du manager
-  if (manager.action === "ACHETER" && riskReview.valide && !existingPosition) {
+  // (seuil de confiance minimal configurable dans les réglages)
+  const confOk = manager.confiance >= (s.config.minConfidence ?? 0);
+  if (manager.action === "ACHETER" && riskReview.valide && !existingPosition && confOk) {
     createAlert({
       type: "achat",
       pair,
@@ -77,7 +79,7 @@ async function analyzePair(pair, news, fearGreed) {
       argumentsPour: manager.argumentsPour,
       argumentsContre: manager.argumentsContre
     });
-  } else if (manager.action === "VENDRE" && existingPosition) {
+  } else if (manager.action === "VENDRE" && existingPosition && confOk) {
     createAlert({
       type: "vente",
       pair,

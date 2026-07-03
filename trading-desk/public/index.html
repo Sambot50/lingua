@@ -52,7 +52,7 @@
 </head>
 <body>
 <header>
-  <h1>📊 Trading Desk <span class="tag">Paper trading — multi-agents Claude</span></h1>
+  <h1>📊 Trading Desk <span class="tag" id="modeBadge">…</span></h1>
   <div class="kpis" id="kpis"></div>
 </header>
 
@@ -88,6 +88,11 @@
 </section>
 
 <section>
+  <h2>📊 Journal de performance</h2>
+  <div id="performance"><p class="muted">Les statistiques apparaîtront après tes premiers trades clôturés.</p></div>
+</section>
+
+<section>
   <h2>🧠 Rapports des agents</h2>
   <div id="reports"><p class="muted">Lance une analyse pour voir les rapports détaillés des 4 agents.</p></div>
 </section>
@@ -111,7 +116,23 @@
       <label>Analyse automatique (minutes, 0 = manuel)</label>
       <input type="number" id="cfgAuto" step="15" min="0" max="1440">
     </div>
+    <div>
+      <label>Multiplicateur ATR du stop-loss (0,5 à 4)</label>
+      <input type="number" id="cfgAtr" step="0.25" min="0.5" max="4">
+    </div>
+    <div>
+      <label>Confiance minimale du manager pour alerter (0-95)</label>
+      <input type="number" id="cfgConf" step="5" min="0" max="95">
+    </div>
+    <div>
+      <label>Mode de trading</label>
+      <select id="cfgMode">
+        <option value="papier">📝 Paper trading (fictif)</option>
+        <option value="reel">⚡ Réel — broker Binance</option>
+      </select>
+    </div>
   </div>
+  <div id="integrations" class="muted" style="margin-top:12px;"></div>
   <div class="row" style="margin-top:14px;">
     <button onclick="saveConfig()">Enregistrer les réglages</button>
     <button class="ghost" onclick="resetPortfolio()">♻️ Réinitialiser le portefeuille fictif</button>
@@ -145,6 +166,16 @@ async function refresh() {
 function render() {
   const s = state;
   const sum = s.portfolio.summary;
+
+  // Badge de mode
+  const badge = document.getElementById("modeBadge");
+  if (s.config.tradingMode === "reel") {
+    badge.textContent = s.broker.live ? "⚡ RÉEL — Binance" : "🧪 RÉEL — Testnet Binance";
+    badge.style.color = s.broker.live ? "var(--red)" : "var(--amber)";
+  } else {
+    badge.textContent = "📝 Paper trading — multi-agents Claude";
+    badge.style.color = "";
+  }
 
   document.getElementById("kpis").innerHTML = `
     <div><span>Valeur totale</span><b>${fmt(sum.total)} USDT</b></div>
@@ -211,6 +242,13 @@ function render() {
         <td class="${pnlCls(t.pnl)}">${t.pnl >= 0 ? "+" : ""}${fmt(t.pnl)} USDT (${fmt(t.pnlPct)}%)</td>
         <td>${esc(t.reason)}</td><td>${new Date(t.closedAt).toLocaleString("fr-FR")}</td></tr>`).join("") + `</table>`;
 
+  // Journal de performance
+  const perf = s.performance;
+  document.getElementById("performance").innerHTML = !perf || perf.nbTrades === 0
+    ? `<p class="muted">Les statistiques apparaîtront après tes premiers trades clôturés.
+       ${perf?.alertStats ? `Alertes proposées : ${perf.alertStats.proposees} (validées : ${perf.alertStats.validees}, refusées : ${perf.alertStats.refusees})` : ""}</p>`
+    : perfBlock(perf);
+
   // Rapports des agents
   const reports = Object.entries(s.reports || {});
   document.getElementById("reports").innerHTML = reports.length === 0
@@ -218,12 +256,60 @@ function render() {
     : reports.map(([pair, r]) => reportBlock(pair, r)).join("");
 
   // Réglages (ne pas écraser pendant la saisie)
-  for (const [id, val] of [["cfgRisk", s.config.riskPct], ["cfgRR", s.config.rewardRiskRatio], ["cfgAuto", s.config.autoIntervalMin]]) {
+  for (const [id, val] of [
+    ["cfgRisk", s.config.riskPct], ["cfgRR", s.config.rewardRiskRatio],
+    ["cfgAuto", s.config.autoIntervalMin], ["cfgAtr", s.config.atrStopMultiplier],
+    ["cfgConf", s.config.minConfidence]
+  ]) {
     const el = document.getElementById(id);
     if (document.activeElement !== el && el.value === "") el.value = val;
   }
   const pairsEl = document.getElementById("cfgPairs");
   if (document.activeElement !== pairsEl && pairsEl.value === "") pairsEl.value = s.config.pairs.join(", ");
+  const modeEl = document.getElementById("cfgMode");
+  if (document.activeElement !== modeEl) modeEl.value = s.config.tradingMode;
+
+  // Statut des intégrations
+  document.getElementById("integrations").innerHTML =
+    `📱 Telegram : ${s.telegramConfigured
+      ? (s.telegramLinked ? "✅ connecté — les alertes arrivent sur ton téléphone avec boutons Valider/Refuser" : "🔗 token détecté — envoie un message à ton bot pour lier ton compte")
+      : "non configuré (variable TELEGRAM_BOT_TOKEN)"}<br>` +
+    `🏦 Broker Binance : ${s.broker.configured
+      ? `✅ clés détectées — ${s.broker.live ? "⚠️ PRODUCTION (argent réel)" : "testnet (entraînement sans risque)"}`
+      : "non configuré (BINANCE_API_KEY / BINANCE_API_SECRET — testnet.binance.vision pour t'entraîner)"}`;
+}
+
+function perfBlock(p) {
+  const line = (label, val, cls = "") => `<tr><td>${label}</td><td class="${cls}"><b>${val}</b></td></tr>`;
+  const pf = p.profitFactor;
+  return `<div class="row" style="align-items:flex-start;gap:24px;">
+    <table style="max-width:420px;">
+      ${line("Trades clôturés", p.nbTrades)}
+      ${line("Taux de réussite", fmt(p.winRatePct) + "% (" + p.gagnants + " gagnants / " + p.perdants + " perdants)", pnlCls(p.winRatePct - 50))}
+      ${line("P&L réalisé total", (p.pnlTotal >= 0 ? "+" : "") + fmt(p.pnlTotal) + " USDT", pnlCls(p.pnlTotal))}
+      ${line("Profit factor", pf == null ? "∞ (aucune perte)" : fmt(pf), pf == null || pf >= 1 ? "pos" : "neg")}
+      ${line("Espérance par trade", (p.esperanceParTrade >= 0 ? "+" : "") + fmt(p.esperanceParTrade) + " USDT", pnlCls(p.esperanceParTrade))}
+      ${line("Gain moyen / perte moyenne", "+" + fmt(p.gainMoyen) + " / " + fmt(p.perteMoyenne) + " USDT")}
+      ${line("R moyen (gain rapporté au risque pris)", p.rMoyen == null ? "—" : fmt(p.rMoyen) + " R", pnlCls(p.rMoyen))}
+      ${line("Drawdown maximal", "−" + fmt(p.maxDrawdown) + " USDT (" + fmt(p.maxDrawdownPct) + "% du capital)", "neg")}
+      ${line("Meilleur / pire trade", "+" + fmt(p.meilleurTrade) + " / " + fmt(p.pireTrade) + " USDT")}
+      ${line("Confiance manager (gagnants vs perdants)", (p.confianceMoyenneGagnants ?? "—") + " vs " + (p.confianceMoyennePerdants ?? "—"))}
+      ${line("Alertes : proposées / validées / refusées", p.alertStats.proposees + " / " + p.alertStats.validees + " / " + p.alertStats.refusees)}
+    </table>
+    <div>
+      <h4 class="muted" style="margin-bottom:6px;">Par paire</h4>
+      <table>${Object.entries(p.parPaire).map(([pair, st]) =>
+        `<tr><td><b>${esc(pair)}</b></td><td>${st.nb} trades · ${st.gagnants} gagnants</td><td class="${pnlCls(st.pnl)}">${st.pnl >= 0 ? "+" : ""}${fmt(st.pnl)} USDT</td></tr>`).join("")}
+      </table>
+      <h4 class="muted" style="margin:12px 0 6px;">Par motif de sortie</h4>
+      <table>${Object.entries(p.parMotif).map(([motif, st]) =>
+        `<tr><td>${esc(motif)}</td><td>${st.nb}</td><td class="${pnlCls(st.pnl)}">${st.pnl >= 0 ? "+" : ""}${fmt(st.pnl)} USDT</td></tr>`).join("")}
+      </table>
+      <p class="muted" style="margin-top:10px;max-width:380px;">💡 Utilise ces chiffres pour ajuster les réglages :
+      profit factor &lt; 1 → augmente le seuil de confiance ; stops touchés trop souvent → augmente le multiplicateur ATR ;
+      R moyen faible → augmente le ratio gain/risque.</p>
+    </div>
+  </div>`;
 }
 
 function alertCard(a) {
@@ -293,6 +379,11 @@ async function closePos(id) {
   catch (e) { alert(e.message); }
 }
 async function saveConfig() {
+  const mode = document.getElementById("cfgMode").value;
+  if (mode === "reel" && state.config.tradingMode !== "reel") {
+    const target = state.broker?.live ? "⚠️ PRODUCTION Binance (ARGENT RÉEL)" : "testnet Binance (argent fictif)";
+    if (!confirm(`Tu passes en mode RÉEL → ${target}.\nChaque ordre validé sera envoyé au broker. Confirmer ?`)) return;
+  }
   try {
     await api("/api/config", {
       method: "POST",
@@ -300,6 +391,9 @@ async function saveConfig() {
         riskPct: document.getElementById("cfgRisk").value,
         rewardRiskRatio: document.getElementById("cfgRR").value,
         autoIntervalMin: document.getElementById("cfgAuto").value,
+        atrStopMultiplier: document.getElementById("cfgAtr").value,
+        minConfidence: document.getElementById("cfgConf").value,
+        tradingMode: mode,
         pairs: document.getElementById("cfgPairs").value.split(",").map(p => p.trim()).filter(Boolean)
       })
     });

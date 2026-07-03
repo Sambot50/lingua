@@ -111,6 +111,23 @@ const pendingAfter = loadState().alerts.filter((a) => a.status === "en_attente")
 assert.strictEqual(pendingAfter.length, 0, "pas de double achat sur une paire déjà en position");
 console.log("  ✅ Pas de doublon : aucune nouvelle alerte d'achat quand une position existe déjà");
 
+// Seuil de confiance : manager à 68 → aucune alerte si le seuil exige 80
+resetPortfolio(10000);
+const s3 = loadState();
+s3.config.pairs = ["BTC/USDT"];
+s3.config.minConfidence = 80;
+calls = [];
+await runFullAnalysis();
+for (let i = 0; i < 100 && loadState().analysisInProgress; i++) {
+  await new Promise((r) => setTimeout(r, 100));
+}
+assert.strictEqual(
+  loadState().alerts.filter((a) => a.status === "en_attente").length,
+  0,
+  "aucune alerte si la confiance du manager (68) est sous le seuil (80)"
+);
+console.log("  ✅ Seuil de confiance respecté : pas d'alerte sous le seuil configuré");
+
 resetPortfolio(10000);
 await new Promise((r) => setTimeout(r, 500));
 console.log("\nPipeline complet : tous les contrôles réussis ✅");

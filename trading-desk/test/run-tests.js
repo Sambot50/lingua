@@ -252,6 +252,69 @@ await test("Résumé du portefeuille : total = cash + positions", () => {
   approx(sum.total, s.portfolio.cash + positionsValue, 0.01);
 });
 
+console.log("\n— Journal de performance —");
+await test("Statistiques exactes sur un jeu de trades connu", async () => {
+  const { computePerformance } = await import("../src/performance.js");
+  const s = loadState();
+  s.config.initialCapital = 10000;
+  // du plus récent au plus ancien (unshift) : +300, -100, +100, -100
+  s.portfolio.closedTrades = [
+    { pair: "BTC/USDT", pnl: 300, entry: 100, qty: 1, stopLoss: 90, riskAtOpen: 100, confiance: 80, reason: "take-profit atteint" },
+    { pair: "ETH/USDT", pnl: -100, entry: 50, qty: 2, stopLoss: 45, riskAtOpen: 100, confiance: 55, reason: "stop-loss touché" },
+    { pair: "BTC/USDT", pnl: 100, entry: 100, qty: 1, stopLoss: 90, riskAtOpen: 100, confiance: 70, reason: "take-profit atteint" },
+    { pair: "ETH/USDT", pnl: -100, entry: 50, qty: 2, stopLoss: 45, riskAtOpen: 100, confiance: 60, reason: "stop-loss touché" }
+  ];
+  const p = computePerformance();
+  assert.strictEqual(p.nbTrades, 4);
+  assert.strictEqual(p.gagnants, 2);
+  approx(p.winRatePct, 50);
+  approx(p.pnlTotal, 200);
+  approx(p.profitFactor, 2); // 400 de gains / 200 de pertes
+  approx(p.esperanceParTrade, 50);
+  approx(p.rMoyen, 0.5); // (3 - 1 + 1 - 1) / 4 / (risque 100)
+  // ordre chronologique : -100, +100, -100, +300 → drawdown max = 100
+  approx(p.maxDrawdown, 100);
+  approx(p.confianceMoyenneGagnants, 75);
+  approx(p.confianceMoyennePerdants, 57.5);
+  assert.strictEqual(p.parPaire["BTC/USDT"].nb, 2);
+  assert.strictEqual(p.parMotif["stop-loss touché"].nb, 2);
+  s.portfolio.closedTrades = [];
+});
+
+console.log("\n— Broker Binance (fonctions hors ligne) —");
+await test("Arrondi des quantités au pas de la paire (LOT_SIZE)", async () => {
+  const { roundStep } = await import("../src/broker.js");
+  approx(roundStep(0.123456789, "0.001"), 0.123);
+  approx(roundStep(1.999999, "0.01"), 1.99);
+  approx(roundStep(5, "1"), 5);
+  approx(roundStep(0.0000001, "0.000001"), 0);
+});
+
+await test("Signature HMAC déterministe et format de requête signée", async () => {
+  process.env.BINANCE_API_SECRET = "test-secret";
+  process.env.BINANCE_API_KEY = "test-key";
+  const { buildSignedQuery } = await import("../src/broker.js");
+  const q1 = buildSignedQuery({ symbol: "BTCUSDT", side: "BUY" }, 1700000000000);
+  const q2 = buildSignedQuery({ symbol: "BTCUSDT", side: "BUY" }, 1700000000000);
+  assert.strictEqual(q1, q2, "même entrée → même signature");
+  assert.ok(/timestamp=1700000000000&signature=[0-9a-f]{64}$/.test(q1), q1);
+  delete process.env.BINANCE_API_SECRET;
+  delete process.env.BINANCE_API_KEY;
+});
+
+console.log("\n— Notifications Telegram (hors ligne) —");
+await test("Formatage du message d'alerte avec plan complet", async () => {
+  const { formatAlertMessage } = await import("../src/telegram.js");
+  const msg = formatAlertMessage({
+    type: "achat", pair: "BTC/USDT", confiance: 72,
+    synthese: "Signal haussier confirmé.",
+    plan: { entree: 65000, stopLoss: 63000, takeProfit: 69000, montantInvesti: 500, risqueMax: 200 }
+  });
+  for (const needle of ["ACHAT", "BTC/USDT", "72/100", "Stop-loss", "Take-profit", "validation"]) {
+    assert.ok(msg.includes(needle), `le message doit contenir "${needle}"`);
+  }
+});
+
 console.log("\n— Parseur RSS —");
 await test("parseRss extrait titres et dates d'un flux réel", async () => {
   // test hors ligne : on injecte un XML représentatif via le module news
