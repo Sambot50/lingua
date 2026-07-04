@@ -12,21 +12,23 @@ import {
   runManagerAgent,
   computeRiskPlan
 } from "./agents.js";
-import { createAlert } from "./paperTrading.js";
+import { createAlert, riskExposure } from "./paperTrading.js";
 
 async function analyzePair(pair, news, fearGreed) {
   const s = loadState();
-  const [candles1h, candles4h, ticker] = await Promise.all([
+  const [candles1h, candles4h, candles1d, ticker] = await Promise.all([
     fetchCandles(pair, "1h", 150),
     fetchCandles(pair, "4h", 120),
+    fetchCandles(pair, "1d", 200),
     fetchTicker(pair)
   ]);
   const snapshot1h = buildSnapshot(candles1h);
   const snapshot4h = buildSnapshot(candles4h);
+  const snapshot1d = buildSnapshot(candles1d);
 
   // Agents 1 et 2 travaillent en parallèle
   const [tech, sentiment] = await Promise.all([
-    runTechnicalAgent(pair, snapshot1h, snapshot4h),
+    runTechnicalAgent(pair, { h1: snapshot1h, h4: snapshot4h, d1: snapshot1d }),
     runSentimentAgent(pair, news, fearGreed)
   ]);
 
@@ -69,16 +71,30 @@ async function analyzePair(pair, news, fearGreed) {
   // Création de l'alerte selon la décision du manager
   // (seuil de confiance minimal configurable dans les réglages)
   const confOk = manager.confiance >= (s.config.minConfidence ?? 0);
+
+  // Plafond d'exposition corrélée : les cryptos évoluent ensemble, on limite
+  // le risque cumulé toutes positions confondues à un % du capital.
+  const expo = riskExposure();
+  const plafondRisque = ((s.config.maxTotalRiskPct ?? 100) / 100) * expo.capital;
+  const expositionOk = expo.openRisk + riskPlan.risqueMax <= plafondRisque + 1e-9;
+
   if (manager.action === "ACHETER" && riskReview.valide && !existingPosition && confOk) {
-    createAlert({
-      type: "achat",
-      pair,
-      plan: riskPlan,
-      confiance: manager.confiance,
-      synthese: manager.synthese,
-      argumentsPour: manager.argumentsPour,
-      argumentsContre: manager.argumentsContre
-    });
+    if (!expositionOk) {
+      s.reports[pair].expositionBloquee =
+        `Alerte d'achat non créée : risque déjà ouvert ${Math.round(expo.openRisk)} USDT ` +
+        `+ nouveau ${Math.round(riskPlan.risqueMax)} USDT > plafond ${Math.round(plafondRisque)} USDT ` +
+        `(${s.config.maxTotalRiskPct}% du capital).`;
+    } else {
+      createAlert({
+        type: "achat",
+        pair,
+        plan: riskPlan,
+        confiance: manager.confiance,
+        synthese: manager.synthese,
+        argumentsPour: manager.argumentsPour,
+        argumentsContre: manager.argumentsContre
+      });
+    }
   } else if (manager.action === "VENDRE" && existingPosition && confOk) {
     createAlert({
       type: "vente",

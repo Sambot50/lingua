@@ -1,6 +1,7 @@
 // Trading Desk — serveur principal
 import express from "express";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { loadState, saveState, resetPortfolio } from "./src/store.js";
 import {
@@ -24,6 +25,32 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json());
+
+// ---------------------------------------------------- Authentification
+// Si ACCESS_PASSWORD est défini, toute l'application (interface + API)
+// est protégée par mot de passe (HTTP Basic — le navigateur gère la saisie).
+// Indispensable avant tout déploiement accessible depuis internet.
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || "";
+function timingSafeEqualStr(a, b) {
+  const A = Buffer.from(String(a));
+  const B = Buffer.from(String(b));
+  return A.length === B.length && crypto.timingSafeEqual(A, B);
+}
+if (ACCESS_PASSWORD) {
+  app.use((req, res, next) => {
+    if (req.path === "/api/health") return next();
+    const h = req.headers.authorization || "";
+    if (h.startsWith("Basic ")) {
+      const decoded = Buffer.from(h.slice(6), "base64").toString();
+      const sep = decoded.indexOf(":");
+      const pass = sep >= 0 ? decoded.slice(sep + 1) : "";
+      if (timingSafeEqualStr(pass, ACCESS_PASSWORD)) return next();
+    }
+    res.set("WWW-Authenticate", 'Basic realm="Trading Desk", charset="UTF-8"');
+    res.status(401).send("Authentification requise");
+  });
+}
+
 app.use(express.static(path.join(__dirname, "public")));
 
 const state = loadState();
@@ -43,6 +70,7 @@ app.get("/api/state", (req, res) => {
     analysisInProgress: state.analysisInProgress,
     lastError: state.lastError,
     apiKeyConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+    authEnabled: Boolean(ACCESS_PASSWORD),
     telegramConfigured: isTelegramConfigured(),
     telegramLinked: Boolean(state.config.telegramChatId),
     broker: brokerInfo()
@@ -82,7 +110,8 @@ app.post("/api/positions/:id/close", async (req, res) => {
 app.post("/api/config", (req, res) => {
   const {
     riskPct, pairs, autoIntervalMin, model, rewardRiskRatio,
-    atrStopMultiplier, minConfidence, tradingMode
+    atrStopMultiplier, minConfidence, tradingMode,
+    feePct, slippagePct, maxTotalRiskPct, trailingStopEnabled
   } = req.body || {};
   if (riskPct !== undefined) {
     const v = Number(riskPct);
@@ -117,6 +146,21 @@ app.post("/api/config", (req, res) => {
   if (minConfidence !== undefined) {
     const v = Number(minConfidence);
     if (v >= 0 && v <= 95) state.config.minConfidence = v;
+  }
+  if (feePct !== undefined) {
+    const v = Number(feePct);
+    if (v >= 0 && v <= 1) state.config.feePct = v;
+  }
+  if (slippagePct !== undefined) {
+    const v = Number(slippagePct);
+    if (v >= 0 && v <= 1) state.config.slippagePct = v;
+  }
+  if (maxTotalRiskPct !== undefined) {
+    const v = Number(maxTotalRiskPct);
+    if (v >= 1 && v <= 20) state.config.maxTotalRiskPct = v;
+  }
+  if (trailingStopEnabled !== undefined) {
+    state.config.trailingStopEnabled = Boolean(trailingStopEnabled);
   }
   if (tradingMode !== undefined) {
     if (tradingMode === "reel" && !brokerInfo().configured) {

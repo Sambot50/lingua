@@ -65,7 +65,26 @@ Génère des données de marché synthétiques — pratique pour découvrir l'in
 - **Ratio gain/risque** : position du take-profit (défaut : 2)
 - **Multiplicateur ATR** : distance du stop-loss (défaut : 1,5 × ATR)
 - **Confiance minimale du manager** : en dessous de ce seuil, aucune alerte n'est créée (défaut : 60)
+- **Plafond de risque total** : risque cumulé maximal toutes positions confondues (défaut : 4% —
+  les cryptos étant très corrélées, 3 positions = 1 seul gros pari)
+- **Frais et slippage simulés** : appliqués à chaque ordre en paper trading (défaut : 0,1% + 0,05%)
+  pour que les statistiques reflètent la réalité
+- **Stop suiveur (trailing stop)** : le stop remonte avec le prix pour verrouiller les gains (désactivé par défaut)
 - **Mode de trading** : papier / réel (broker)
+
+L'agent technique analyse désormais **3 unités de temps** : journalier (tendance de fond),
+4 heures (tendance intermédiaire) et 1 heure (timing d'entrée).
+
+## 🔐 Sécurité
+
+Avant tout déploiement accessible depuis internet, protège l'interface :
+
+```bash
+export ACCESS_PASSWORD="ton-mot-de-passe-solide"
+```
+
+Sans cette variable, **n'importe qui connaissant l'URL peut valider des ordres**.
+Le navigateur demandera le mot de passe à la connexion (laisser le nom d'utilisateur vide ou mettre ce que tu veux).
 
 ## 📊 Journal de performance
 

@@ -9,7 +9,8 @@ import { computeRiskPlan } from "../src/agents.js";
 import { fetchCandles, fetchTicker, fetchPrice } from "../src/marketData.js";
 import {
   createAlert, approveAlert, rejectAlert, monitorPositions,
-  portfolioSummary, closePositionManually, expireOldAlerts
+  portfolioSummary, closePositionManually, expireOldAlerts,
+  riskExposure, applyTrailing
 } from "../src/paperTrading.js";
 import { loadState, resetPortfolio } from "../src/store.js";
 
@@ -163,6 +164,14 @@ await test("fetchTicker retourne un prix cohérent", async () => {
 
 console.log("\n— Paper trading (cycle de vie complet) —");
 resetPortfolio(10000);
+{
+  // Frais désactivés pour les tests de cycle de vie (testés séparément plus bas)
+  const s0 = loadState();
+  s0.config.feePct = 0;
+  s0.config.slippagePct = 0;
+  s0.config.maxTotalRiskPct = 100;
+  s0.config.trailingStopEnabled = false;
+}
 
 await test("Alerte d'achat → validation → position ouverte, cash débité", async () => {
   const price = await fetchPrice("BTC/USDT");
@@ -250,6 +259,83 @@ await test("Résumé du portefeuille : total = cash + positions", () => {
   const sum = portfolioSummary();
   const positionsValue = s.portfolio.positions.reduce((acc, p) => acc + p.qty * (p.lastPrice || p.entry), 0);
   approx(sum.total, s.portfolio.cash + positionsValue, 0.01);
+});
+
+console.log("\n— Frais, slippage, exposition, trailing —");
+await test("Achat avec frais et slippage : cash débité exactement", async () => {
+  resetPortfolio(10000);
+  const s = loadState();
+  s.config.feePct = 0.1;
+  s.config.slippagePct = 0.05;
+  s.config.maxTotalRiskPct = 100;
+  const price = await fetchPrice("BTC/USDT");
+  const alert = createAlert({
+    type: "achat", pair: "BTC/USDT", confiance: 80, synthese: "test frais",
+    plan: { entree: price, stopLoss: price * 0.97, takeProfit: price * 1.06, quantite: 0.01, montantInvesti: price * 0.01 }
+  });
+  await approveAlert(alert.id);
+  const s2 = loadState();
+  const pos = s2.portfolio.positions[0];
+  approx(pos.entry, price * 1.0005, price * 1e-9); // slippage de +0,05% à l'achat
+  const notional = pos.qty * pos.entry;
+  const fee = notional * 0.001;
+  approx(pos.feesPaid, Math.round(fee * 100) / 100, 0.011);
+  approx(s2.portfolio.cash, 10000 - notional - fee, 0.02);
+});
+
+await test("Clôture avec frais : P&L net inférieur au P&L brut", async () => {
+  const s = loadState();
+  const pos = s.portfolio.positions[0];
+  const price = await fetchPrice("BTC/USDT");
+  pos.stopLoss = pos.entry * 100; // force la clôture au prochain tick
+  await monitorPositions();
+  const t = loadState().portfolio.closedTrades[0];
+  const exitPrice = price * (1 - 0.0005);
+  const exitFee = t.qty * exitPrice * 0.001;
+  const expectedPnl = (t.qty * exitPrice - exitFee) - t.qty * t.entry - t.feesPaid;
+  approx(t.pnl, Math.round(expectedPnl * 100) / 100, 0.02);
+  assert.ok(t.fees > 0, "les frais doivent être enregistrés");
+  const pnlBrut = t.qty * (price - t.entry);
+  assert.ok(t.pnl < pnlBrut, "le P&L net doit être inférieur au brut");
+});
+
+await test("Plafond d'exposition : validation refusée si risque cumulé dépassé", async () => {
+  resetPortfolio(10000);
+  const s = loadState();
+  s.config.feePct = 0;
+  s.config.slippagePct = 0;
+  s.config.maxTotalRiskPct = 2; // plafond : 200 USDT sur 10 000
+  // position existante : 150 USDT de risque ouvert
+  s.portfolio.cash -= 1000;
+  s.portfolio.positions.push({
+    id: "expo1", pair: "ETH/USDT", qty: 1, entry: 1000, stopLoss: 850,
+    lastPrice: 1000, riskAtOpen: 150, openedAt: new Date().toISOString()
+  });
+  const expo = riskExposure();
+  approx(expo.openRisk, 150);
+  approx(expo.capital, 10000);
+  // nouveau trade avec 100 USDT de risque → 150 + 100 > 200 → refus
+  const price = await fetchPrice("BTC/USDT");
+  const qty = 100 / (price * 0.1);
+  const alert = createAlert({
+    type: "achat", pair: "BTC/USDT", confiance: 80, synthese: "test exposition",
+    plan: { entree: price, stopLoss: price * 0.9, takeProfit: price * 1.2, quantite: qty, montantInvesti: qty * price }
+  });
+  await assert.rejects(() => approveAlert(alert.id), /Plafond de risque/);
+  assert.strictEqual(loadState().portfolio.positions.length, 1, "aucune position ouverte");
+});
+
+await test("Trailing stop : monte avec le prix, ne redescend jamais", () => {
+  const pos = { entry: 100, stopLoss: 95, trailingDistance: 5 };
+  applyTrailing(pos, 110);
+  approx(pos.stopLoss, 105); // remonte : 110 − 5
+  applyTrailing(pos, 103);
+  approx(pos.stopLoss, 105); // ne redescend pas
+  applyTrailing(pos, 120);
+  approx(pos.stopLoss, 115); // remonte encore
+  const posSansDist = { entry: 100, stopLoss: 96 };
+  applyTrailing(posSansDist, 110); // distance déduite de entrée − stop
+  approx(posSansDist.stopLoss, 106);
 });
 
 console.log("\n— Journal de performance —");

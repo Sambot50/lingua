@@ -18,7 +18,11 @@ const DEFAULT_STATE = {
     rewardRiskRatio: 2, // take-profit = 2 × la distance du stop
     minConfidence: 60, // confiance minimale du manager pour créer une alerte
     telegramChatId: "", // détecté automatiquement au premier message au bot
-    tradingMode: "papier" // "papier" | "reel" (broker Binance, testnet par défaut)
+    tradingMode: "papier", // "papier" | "reel" (broker Binance, testnet par défaut)
+    feePct: 0.1, // frais simulés par ordre en paper trading (% — Binance spot : 0,1%)
+    slippagePct: 0.05, // glissement de prix simulé par ordre (%)
+    maxTotalRiskPct: 4, // plafond de risque cumulé toutes positions (% du capital)
+    trailingStopEnabled: false // stop suiveur : remonte avec le prix
   },
   portfolio: {
     cash: 10000,

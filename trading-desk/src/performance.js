@@ -71,6 +71,7 @@ export function computePerformance() {
     nbTrades: trades.length,
     gagnants: winners.length,
     perdants: losers.length,
+    fraisTotaux: r2(trades.reduce((a, t) => a + (t.fees || 0), 0)),
     winRatePct: r2((winners.length / trades.length) * 100),
     pnlTotal: r2(pnlTotal),
     profitFactor: grossLoss > 0 ? r2(grossGain / grossLoss) : null,

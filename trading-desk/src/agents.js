@@ -71,7 +71,7 @@ const TECH_SCHEMA = {
   additionalProperties: false
 };
 
-export async function runTechnicalAgent(pair, snapshot1h, snapshot4h) {
+export async function runTechnicalAgent(pair, { h1, h4, d1 }) {
   return callAgent({
     system:
       "Tu es un analyste technique senior dans un fonds d'investissement crypto. " +
@@ -79,12 +79,16 @@ export async function runTechnicalAgent(pair, snapshot1h, snapshot4h) {
       "le RSI, le MACD, les bandes de Bollinger, l'ATR et les niveaux de support/résistance. " +
       "Les indicateurs t'ont été calculés par un moteur déterministe : ton rôle est de les " +
       "INTERPRÉTER de manière professionnelle et prudente, pas de les recalculer. " +
+      "Méthode multi-timeframe : la tendance JOURNALIÈRE donne le contexte de fond (la marée), " +
+      "le 4 heures la tendance intermédiaire, le 1 heure le timing d'entrée. " +
+      "Un signal court terme qui va CONTRE la tendance journalière doit fortement réduire ta confiance. " +
       "Sois honnête sur l'incertitude : un biais neutre avec faible confiance est une réponse valable. " +
       "Réponds en français.",
     user:
       `Paire analysée : ${pair}\n\n` +
-      `Indicateurs sur unité de temps 1 heure :\n${JSON.stringify(snapshot1h, null, 2)}\n\n` +
-      `Indicateurs sur unité de temps 4 heures :\n${JSON.stringify(snapshot4h, null, 2)}\n\n` +
+      `Indicateurs sur unité de temps journalière (tendance de fond) :\n${JSON.stringify(d1, null, 2)}\n\n` +
+      `Indicateurs sur unité de temps 4 heures :\n${JSON.stringify(h4, null, 2)}\n\n` +
+      `Indicateurs sur unité de temps 1 heure (timing) :\n${JSON.stringify(h1, null, 2)}\n\n` +
       "Donne ton analyse technique : biais directionnel, confiance (0-100), signaux clés, " +
       "support et résistance majeurs, et une courte synthèse.",
     schema: TECH_SCHEMA

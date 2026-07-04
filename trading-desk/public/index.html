@@ -125,6 +125,25 @@
       <input type="number" id="cfgConf" step="5" min="0" max="95">
     </div>
     <div>
+      <label>Plafond de risque total (% du capital, 1-20)</label>
+      <input type="number" id="cfgMaxRisk" step="1" min="1" max="20">
+    </div>
+    <div>
+      <label>Frais simulés par ordre (%, Binance : 0,1)</label>
+      <input type="number" id="cfgFee" step="0.05" min="0" max="1">
+    </div>
+    <div>
+      <label>Slippage simulé par ordre (%)</label>
+      <input type="number" id="cfgSlip" step="0.05" min="0" max="1">
+    </div>
+    <div>
+      <label>Stop suiveur (trailing stop)</label>
+      <select id="cfgTrailing">
+        <option value="off">Désactivé — stop fixe</option>
+        <option value="on">Activé — le stop remonte avec le prix</option>
+      </select>
+    </div>
+    <div>
       <label>Mode de trading</label>
       <select id="cfgMode">
         <option value="papier">📝 Paper trading (fictif)</option>
@@ -237,9 +256,10 @@ function render() {
   const closed = s.portfolio.closedTrades.slice(0, 25);
   document.getElementById("closedTrades").innerHTML = closed.length === 0
     ? `<p class="muted">Aucun trade clôturé.</p>`
-    : `<table><tr><th>Paire</th><th>Entrée</th><th>Sortie</th><th>P&amp;L</th><th>Motif</th><th>Date</th></tr>` +
+    : `<table><tr><th>Paire</th><th>Entrée</th><th>Sortie</th><th>P&amp;L (net de frais)</th><th>Frais</th><th>Motif</th><th>Date</th></tr>` +
       closed.map(t => `<tr><td><b>${esc(t.pair)}</b></td><td>${fmt(t.entry)}</td><td>${fmt(t.exitPrice)}</td>
         <td class="${pnlCls(t.pnl)}">${t.pnl >= 0 ? "+" : ""}${fmt(t.pnl)} USDT (${fmt(t.pnlPct)}%)</td>
+        <td class="muted">${fmt(t.fees ?? 0)}</td>
         <td>${esc(t.reason)}</td><td>${new Date(t.closedAt).toLocaleString("fr-FR")}</td></tr>`).join("") + `</table>`;
 
   // Journal de performance
@@ -259,7 +279,8 @@ function render() {
   for (const [id, val] of [
     ["cfgRisk", s.config.riskPct], ["cfgRR", s.config.rewardRiskRatio],
     ["cfgAuto", s.config.autoIntervalMin], ["cfgAtr", s.config.atrStopMultiplier],
-    ["cfgConf", s.config.minConfidence]
+    ["cfgConf", s.config.minConfidence], ["cfgMaxRisk", s.config.maxTotalRiskPct],
+    ["cfgFee", s.config.feePct], ["cfgSlip", s.config.slippagePct]
   ]) {
     const el = document.getElementById(id);
     if (document.activeElement !== el && el.value === "") el.value = val;
@@ -268,9 +289,14 @@ function render() {
   if (document.activeElement !== pairsEl && pairsEl.value === "") pairsEl.value = s.config.pairs.join(", ");
   const modeEl = document.getElementById("cfgMode");
   if (document.activeElement !== modeEl) modeEl.value = s.config.tradingMode;
+  const trailEl = document.getElementById("cfgTrailing");
+  if (document.activeElement !== trailEl) trailEl.value = s.config.trailingStopEnabled ? "on" : "off";
 
   // Statut des intégrations
   document.getElementById("integrations").innerHTML =
+    `🔐 Sécurité : ${s.authEnabled
+      ? "✅ interface protégée par mot de passe"
+      : "⚠️ <b>interface NON protégée</b> — indispensable avant un déploiement sur internet (variable ACCESS_PASSWORD)"}<br>` +
     `📱 Telegram : ${s.telegramConfigured
       ? (s.telegramLinked ? "✅ connecté — les alertes arrivent sur ton téléphone avec boutons Valider/Refuser" : "🔗 token détecté — envoie un message à ton bot pour lier ton compte")
       : "non configuré (variable TELEGRAM_BOT_TOKEN)"}<br>` +
@@ -291,6 +317,7 @@ function perfBlock(p) {
       ${line("Espérance par trade", (p.esperanceParTrade >= 0 ? "+" : "") + fmt(p.esperanceParTrade) + " USDT", pnlCls(p.esperanceParTrade))}
       ${line("Gain moyen / perte moyenne", "+" + fmt(p.gainMoyen) + " / " + fmt(p.perteMoyenne) + " USDT")}
       ${line("R moyen (gain rapporté au risque pris)", p.rMoyen == null ? "—" : fmt(p.rMoyen) + " R", pnlCls(p.rMoyen))}
+      ${line("Frais totaux payés", fmt(p.fraisTotaux) + " USDT", "neg")}
       ${line("Drawdown maximal", "−" + fmt(p.maxDrawdown) + " USDT (" + fmt(p.maxDrawdownPct) + "% du capital)", "neg")}
       ${line("Meilleur / pire trade", "+" + fmt(p.meilleurTrade) + " / " + fmt(p.pireTrade) + " USDT")}
       ${line("Confiance manager (gagnants vs perdants)", (p.confianceMoyenneGagnants ?? "—") + " vs " + (p.confianceMoyennePerdants ?? "—"))}
@@ -343,6 +370,7 @@ function reportBlock(pair, r) {
   const biasIcon = (b) => b === "haussier" ? "📈" : b === "baissier" ? "📉" : "➖";
   return `<details>
     <summary><b>${esc(pair)}</b> — ${fmt(r.prix)} USDT · décision : <b>${esc(m.action)}</b> (${m.confiance}/100) · ${new Date(r.at).toLocaleString("fr-FR")}</summary>
+    ${r.expositionBloquee ? `<div class="banner warn" style="margin:8px 0;">🛑 ${esc(r.expositionBloquee)}</div>` : ""}
     <div class="report-block"><h4>🕹 Agent 4 — Manager</h4>
       <p>${esc(m.synthese)}</p>
       ${m.argumentsPour?.length ? `<ul>${m.argumentsPour.map(x => `<li class="pos">✔ ${esc(x)}</li>`).join("")}</ul>` : ""}
@@ -393,6 +421,10 @@ async function saveConfig() {
         autoIntervalMin: document.getElementById("cfgAuto").value,
         atrStopMultiplier: document.getElementById("cfgAtr").value,
         minConfidence: document.getElementById("cfgConf").value,
+        maxTotalRiskPct: document.getElementById("cfgMaxRisk").value,
+        feePct: document.getElementById("cfgFee").value,
+        slippagePct: document.getElementById("cfgSlip").value,
+        trailingStopEnabled: document.getElementById("cfgTrailing").value === "on",
         tradingMode: mode,
         pairs: document.getElementById("cfgPairs").value.split(",").map(p => p.trim()).filter(Boolean)
       })

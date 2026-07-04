@@ -30,6 +30,10 @@ const fakeClient = {
           argumentsPour: ["Signaux convergents"], argumentsContre: ["Confiance sentiment moyenne"]
         };
       } else if (sys.includes("analyste technique")) {
+        // L'agent technique doit recevoir les 3 unités de temps (1h, 4h, journalier)
+        const userMsg = params.messages[0].content;
+        assert.ok(userMsg.includes("journalière"), "le prompt technique doit inclure le timeframe journalier");
+        assert.ok(userMsg.includes("4 heures") && userMsg.includes("1 heure"), "timeframes 1h et 4h attendus");
         payload = {
           biais: "haussier", confiance: 72,
           signaux: ["RSI en zone neutre ascendante", "EMA20 > EMA50"],
@@ -60,6 +64,10 @@ _setTestClient(fakeClient);
 resetPortfolio(10000);
 const s = loadState();
 s.config.pairs = ["BTC/USDT"];
+s.config.minConfidence = 60;
+s.config.maxTotalRiskPct = 4;
+s.config.feePct = 0;
+s.config.slippagePct = 0;
 
 console.log("— Pipeline multi-agents (client simulé) —");
 
@@ -127,6 +135,34 @@ assert.strictEqual(
   "aucune alerte si la confiance du manager (68) est sous le seuil (80)"
 );
 console.log("  ✅ Seuil de confiance respecté : pas d'alerte sous le seuil configuré");
+
+// Plafond d'exposition : une position existante consomme déjà du budget de
+// risque → le nouveau plan doit être bloqué (risque cumulé > plafond)
+resetPortfolio(10000);
+const s4 = loadState();
+s4.config.pairs = ["BTC/USDT"];
+s4.config.minConfidence = 0;
+s4.config.maxTotalRiskPct = 1; // plafond : 100 USDT de risque cumulé
+s4.portfolio.cash -= 1000;
+s4.portfolio.positions.push({
+  id: "expo-pipe", pair: "ETH/USDT", qty: 1, entry: 1000, stopLoss: 950,
+  lastPrice: 1000, riskAtOpen: 50, openedAt: new Date().toISOString()
+}); // 50 USDT déjà en risque + nouveau plan ~80 USDT > 100 → blocage attendu
+await runFullAnalysis();
+for (let i = 0; i < 100 && loadState().analysisInProgress; i++) {
+  await new Promise((r) => setTimeout(r, 100));
+}
+const stateExpo = loadState();
+assert.strictEqual(
+  stateExpo.alerts.filter((a) => a.status === "en_attente").length,
+  0,
+  "aucune alerte quand le plafond d'exposition est atteint"
+);
+assert.ok(
+  stateExpo.reports["BTC/USDT"].expositionBloquee,
+  "le rapport doit expliquer pourquoi l'alerte a été bloquée"
+);
+console.log("  ✅ Plafond d'exposition corrélée : alerte bloquée et motif tracé dans le rapport");
 
 resetPortfolio(10000);
 await new Promise((r) => setTimeout(r, 500));
