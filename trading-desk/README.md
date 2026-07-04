@@ -9,7 +9,8 @@ Application de **trading crypto** pilotée par 4 agents IA propulsés par Claude
 | **1. Analyste technique** | Interprète chandeliers japonais, RSI, MACD, EMA/SMA, Bollinger, ATR, volumes, supports/résistances (calculés par le serveur sur 1h et 4h) |
 | **2. Analyste sentiment** | Analyse les actualités (CoinDesk, Cointelegraph) et l'indice Fear & Greed |
 | **3. Risk manager** | Valide le plan de trade : risque limité à X% du capital (2% par défaut), stop-loss ATR, take-profit à ratio gain/risque 2:1. Le dimensionnement est calculé par du **code déterministe**, jamais par l'IA |
-| **4. Manager** | Chef d'orchestre : synthétise les rapports, décide ACHETER / VENDRE / ATTENDRE et te rend compte. Sa décision crée une **alerte que tu valides ou refuses** |
+| **4. Manager** | Chef d'orchestre : synthétise les rapports, décide ACHETER / VENDRE / ATTENDRE et te rend compte. Sa décision crée une **alerte que tu valides ou refuses**. À chaque décision, il reçoit le bilan de ses décisions passées (calibration de sa confiance) |
+| **5. Coach / Analyste de données** | À la demande (bouton « Analyser mes trades », dès 5 trades clôturés) : étudie l'historique complet — signaux à l'entrée, réglages utilisés, résultats nets de frais — et propose des ajustements de réglages justifiés. **Rien n'est appliqué automatiquement** |
 
 ## 🔁 Fonctionnement d'un cycle
 
@@ -86,13 +87,16 @@ export ACCESS_PASSWORD="ton-mot-de-passe-solide"
 Sans cette variable, **n'importe qui connaissant l'URL peut valider des ordres**.
 Le navigateur demandera le mot de passe à la connexion (laisser le nom d'utilisateur vide ou mettre ce que tu veux).
 
-## 📊 Journal de performance
+## 📊 Journal de performance et mémoire des trades
 
-Calculé automatiquement sur les trades clôturés : taux de réussite, profit factor,
-espérance par trade, R moyen (gain rapporté au risque pris), drawdown maximal,
-statistiques par paire et par motif de sortie, calibration du manager (sa confiance
-moyenne sur les trades gagnants vs perdants). Utilise-le pour ajuster les réglages
-avant tout passage en réel.
+Chaque trade est enregistré avec son **contexte complet** : biais et confiance des agents
+technique et sentiment à l'entrée, Fear & Greed, et les réglages utilisés. Le journal calcule :
+taux de réussite, profit factor, espérance par trade, R moyen, drawdown maximal, frais cumulés,
+statistiques par paire et par motif de sortie, et l'**attribution par agent** (réussite quand
+technique et sentiment sont d'accord vs en désaccord, par niveau de confiance du manager).
+Une **courbe d'évolution du capital** (un point toutes les 4 h + à chaque clôture) complète le tableau.
+
+Un **rapport quotidien Telegram** (heure configurable) résume portefeuille, P&L et alertes en attente.
 
 ## 📱 Notifications Telegram (validation depuis ton téléphone)
 

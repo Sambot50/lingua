@@ -89,7 +89,18 @@
 
 <section>
   <h2>📊 Journal de performance</h2>
+  <div id="equityChart" style="position:relative;"></div>
   <div id="performance"><p class="muted">Les statistiques apparaîtront après tes premiers trades clôturés.</p></div>
+</section>
+
+<section>
+  <h2>🎓 Agent 5 — Coach / Analyste de données</h2>
+  <div class="row" style="justify-content:space-between;">
+    <p class="muted" style="max-width:640px;">Le coach étudie l'historique complet de tes trades — signaux des agents à l'entrée,
+    réglages utilisés, résultats nets de frais — et propose des ajustements. <b>Rien n'est appliqué automatiquement : tu décides.</b></p>
+    <button id="coachBtn" onclick="runCoach()">🎓 Analyser mes trades</button>
+  </div>
+  <div id="coachReport"></div>
 </section>
 
 <section>
@@ -135,6 +146,10 @@
     <div>
       <label>Slippage simulé par ordre (%)</label>
       <input type="number" id="cfgSlip" step="0.05" min="0" max="1">
+    </div>
+    <div>
+      <label>Rapport quotidien Telegram (heure 0-23, -1 = off)</label>
+      <input type="number" id="cfgReport" step="1" min="-1" max="23">
     </div>
     <div>
       <label>Stop suiveur (trailing stop)</label>
@@ -268,6 +283,15 @@ function render() {
     ? `<p class="muted">Les statistiques apparaîtront après tes premiers trades clôturés.
        ${perf?.alertStats ? `Alertes proposées : ${perf.alertStats.proposees} (validées : ${perf.alertStats.validees}, refusées : ${perf.alertStats.refusees})` : ""}</p>`
     : perfBlock(perf);
+  renderEquityChart(s.equityHistory || [], s.config.initialCapital);
+
+  // Rapport du coach (Agent 5)
+  document.getElementById("coachBtn").disabled = !s.apiKeyConfigured || s.portfolio.closedTrades.length < 5;
+  document.getElementById("coachReport").innerHTML = s.coachReport
+    ? coachBlock(s.coachReport)
+    : `<p class="muted" style="margin-top:8px;">${s.portfolio.closedTrades.length < 5
+        ? `Disponible à partir de 5 trades clôturés (actuellement : ${s.portfolio.closedTrades.length}).`
+        : "Clique sur « Analyser mes trades » pour obtenir ton premier rapport de coach."}</p>`;
 
   // Rapports des agents
   const reports = Object.entries(s.reports || {});
@@ -280,7 +304,8 @@ function render() {
     ["cfgRisk", s.config.riskPct], ["cfgRR", s.config.rewardRiskRatio],
     ["cfgAuto", s.config.autoIntervalMin], ["cfgAtr", s.config.atrStopMultiplier],
     ["cfgConf", s.config.minConfidence], ["cfgMaxRisk", s.config.maxTotalRiskPct],
-    ["cfgFee", s.config.feePct], ["cfgSlip", s.config.slippagePct]
+    ["cfgFee", s.config.feePct], ["cfgSlip", s.config.slippagePct],
+    ["cfgReport", s.config.dailyReportHour]
   ]) {
     const el = document.getElementById(id);
     if (document.activeElement !== el && el.value === "") el.value = val;
@@ -332,11 +357,128 @@ function perfBlock(p) {
       <table>${Object.entries(p.parMotif).map(([motif, st]) =>
         `<tr><td>${esc(motif)}</td><td>${st.nb}</td><td class="${pnlCls(st.pnl)}">${st.pnl >= 0 ? "+" : ""}${fmt(st.pnl)} USDT</td></tr>`).join("")}
       </table>
+      ${p.attribution ? `
+      <h4 class="muted" style="margin:12px 0 6px;">Attribution par agent (${p.attribution.tradesAvecContexte} trades avec contexte)</h4>
+      <table>
+        <tr><th>Situation à l'entrée</th><th>Trades</th><th>Réussite</th><th>P&amp;L</th></tr>
+        ${[["Technique et sentiment d'accord", p.attribution.accordTechSentiment],
+           ["Technique et sentiment en désaccord", p.attribution.desaccordTechSentiment],
+           ...Object.entries(p.attribution.parConfianceManager).map(([k, v]) => [`Confiance manager ${k}`, v])]
+          .filter(([, st]) => st.nb > 0)
+          .map(([label, st]) => `<tr><td>${esc(label)}</td><td>${st.nb}</td>
+            <td>${st.winRatePct == null ? "—" : fmt(st.winRatePct) + "%"}</td>
+            <td class="${pnlCls(st.pnl)}">${st.pnl >= 0 ? "+" : ""}${fmt(st.pnl)} USDT</td></tr>`).join("")}
+      </table>` : ""}
       <p class="muted" style="margin-top:10px;max-width:380px;">💡 Utilise ces chiffres pour ajuster les réglages :
       profit factor &lt; 1 → augmente le seuil de confiance ; stops touchés trop souvent → augmente le multiplicateur ATR ;
       R moyen faible → augmente le ratio gain/risque.</p>
     </div>
   </div>`;
+}
+
+// Courbe d'équité — ligne unique #388bfd (validée pour fond sombre),
+// repère pointillé au capital initial, survol avec infobulle.
+let equityPts = [];
+function renderEquityChart(history, initialCapital) {
+  const el = document.getElementById("equityChart");
+  if (!history || history.length < 2) {
+    el.innerHTML = `<p class="muted" style="margin-bottom:10px;">La courbe d'évolution du capital apparaîtra au fil du temps (un point toutes les 4 h et à chaque trade clôturé).</p>`;
+    return;
+  }
+  const W = 800, H = 200, padL = 58, padR = 105, padT = 14, padB = 22;
+  const ts = history.map(p => new Date(p.t).getTime());
+  const vs = history.map(p => p.total);
+  const tMin = Math.min(...ts), tMax = Math.max(...ts);
+  let vMin = Math.min(...vs, initialCapital), vMax = Math.max(...vs, initialCapital);
+  const vPad = (vMax - vMin) * 0.08 || vMax * 0.01 || 1;
+  vMin -= vPad; vMax += vPad;
+  const x = (t) => padL + ((t - tMin) / Math.max(1, tMax - tMin)) * (W - padL - padR);
+  const y = (v) => padT + (1 - (v - vMin) / (vMax - vMin)) * (H - padT - padB);
+  equityPts = history.map((p, i) => ({ px: x(ts[i]), py: y(vs[i]), t: p.t, total: p.total }));
+
+  // 3 lignes de grille horizontales discrètes + étiquettes
+  let grid = "";
+  for (let i = 0; i <= 2; i++) {
+    const v = vMin + ((vMax - vMin) * i) / 2;
+    grid += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" stroke="#2d333b" stroke-width="1"/>
+      <text x="${padL - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="#8b949e">${Math.round(v).toLocaleString("fr-FR")}</text>`;
+  }
+  const path = equityPts.map((p, i) => `${i === 0 ? "M" : "L"}${p.px.toFixed(1)},${p.py.toFixed(1)}`).join(" ");
+  const last = equityPts[equityPts.length - 1];
+  const lastCls = last.total >= initialCapital ? "#3fb950" : "#f85149";
+  const d1 = new Date(history[0].t), d2 = new Date(history[history.length - 1].t);
+
+  el.innerHTML = `
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:900px;display:block;" role="img"
+       aria-label="Courbe d'évolution de la valeur du portefeuille">
+    ${grid}
+    <line x1="${padL}" y1="${y(initialCapital)}" x2="${W - padR}" y2="${y(initialCapital)}"
+          stroke="#6e7681" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="${W - padR + 4}" y="${y(initialCapital) + 3.5}" font-size="10" fill="#8b949e">capital initial</text>
+    <path d="${path}" fill="none" stroke="#388bfd" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${last.px}" cy="${last.py}" r="3.5" fill="#388bfd"/>
+    <text x="${last.px + 7}" y="${last.py - 7}" font-size="11" font-weight="600" fill="${lastCls}">${last.total.toLocaleString("fr-FR")} USDT</text>
+    <text x="${padL}" y="${H - 6}" font-size="10" fill="#8b949e">${d1.toLocaleDateString("fr-FR")}</text>
+    <text x="${W - padR}" y="${H - 6}" text-anchor="end" font-size="10" fill="#8b949e">${d2.toLocaleDateString("fr-FR")}</text>
+    <rect id="eqHover" x="${padL}" y="${padT}" width="${W - padL - padR}" height="${H - padT - padB}" fill="transparent"/>
+    <line id="eqCross" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="#8b949e" stroke-width="1" visibility="hidden"/>
+    <circle id="eqDot" r="4" fill="#388bfd" stroke="#161b22" stroke-width="2" visibility="hidden"/>
+  </svg>
+  <div id="eqTip" style="position:absolute;display:none;background:#1c2330;border:1px solid #2d333b;border-radius:6px;padding:6px 10px;font-size:.78rem;pointer-events:none;white-space:nowrap;"></div>`;
+
+  const svg = el.querySelector("svg");
+  const hover = el.querySelector("#eqHover");
+  const cross = el.querySelector("#eqCross");
+  const dot = el.querySelector("#eqDot");
+  const tip = el.querySelector("#eqTip");
+  hover.addEventListener("mousemove", (ev) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = ((ev.clientX - rect.left) / rect.width) * W;
+    let best = equityPts[0];
+    for (const p of equityPts) if (Math.abs(p.px - mx) < Math.abs(best.px - mx)) best = p;
+    cross.setAttribute("x1", best.px); cross.setAttribute("x2", best.px);
+    cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", best.px); dot.setAttribute("cy", best.py);
+    dot.setAttribute("visibility", "visible");
+    tip.style.display = "block";
+    tip.innerHTML = `${new Date(best.t).toLocaleString("fr-FR")}<br><b>${best.total.toLocaleString("fr-FR")} USDT</b>`;
+    const lx = (best.px / W) * rect.width;
+    tip.style.left = Math.min(lx + 12, rect.width - 150) + "px";
+    tip.style.top = (best.py / H) * rect.height - 10 + "px";
+  });
+  hover.addEventListener("mouseleave", () => {
+    cross.setAttribute("visibility", "hidden");
+    dot.setAttribute("visibility", "hidden");
+    tip.style.display = "none";
+  });
+}
+
+function coachBlock(c) {
+  const li = (arr, cls = "") => (arr || []).map(x => `<li class="${cls}">${esc(x)}</li>`).join("");
+  return `<div class="report-block" style="margin-top:12px;">
+    <h4>Rapport du ${new Date(c.at).toLocaleString("fr-FR")} · ${c.nbTradesAnalyses} trades analysés</h4>
+    <p style="margin:6px 0;">${esc(c.synthese)}</p>
+    ${c.diagnostics?.length ? `<h4 style="margin-top:10px;">🔎 Constats</h4><ul>${li(c.diagnostics)}</ul>` : ""}
+    ${c.forces?.length ? `<h4 style="margin-top:10px;">💪 Points forts</h4><ul>${li(c.forces, "pos")}</ul>` : ""}
+    ${c.faiblesses?.length ? `<h4 style="margin-top:10px;">⚠️ Points faibles</h4><ul>${li(c.faiblesses, "neg")}</ul>` : ""}
+    ${c.recommandationsReglages?.length ? `<h4 style="margin-top:10px;">🛠 Réglages proposés (à appliquer toi-même dans les réglages si tu es d'accord)</h4>
+      <table><tr><th>Paramètre</th><th>Actuel</th><th>Proposé</th><th>Justification</th></tr>
+      ${c.recommandationsReglages.map(r => `<tr><td><b>${esc(r.parametre)}</b></td><td>${esc(r.valeurActuelle)}</td>
+        <td class="pos"><b>${esc(r.valeurProposee)}</b></td><td>${esc(r.justification)}</td></tr>`).join("")}</table>` : ""}
+    <p class="muted" style="margin-top:10px;font-style:italic;">Fiabilité statistique : ${esc(c.fiabiliteAnalyse)}</p>
+  </div>`;
+}
+
+async function runCoach() {
+  const btn = document.getElementById("coachBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin"></span> Analyse en cours (30-90 s)…`;
+  try {
+    await api("/api/coach", { method: "POST" });
+    refresh();
+  } catch (e) { alert(e.message); }
+  btn.disabled = false;
+  btn.textContent = "🎓 Analyser mes trades";
 }
 
 function alertCard(a) {
@@ -425,6 +567,7 @@ async function saveConfig() {
         feePct: document.getElementById("cfgFee").value,
         slippagePct: document.getElementById("cfgSlip").value,
         trailingStopEnabled: document.getElementById("cfgTrailing").value === "on",
+        dailyReportHour: document.getElementById("cfgReport").value,
         tradingMode: mode,
         pairs: document.getElementById("cfgPairs").value.split(",").map(p => p.trim()).filter(Boolean)
       })

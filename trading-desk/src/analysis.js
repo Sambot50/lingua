@@ -13,6 +13,7 @@ import {
   computeRiskPlan
 } from "./agents.js";
 import { createAlert, riskExposure } from "./paperTrading.js";
+import { managerCalibrationSummary } from "./performance.js";
 
 async function analyzePair(pair, news, fearGreed) {
   const s = loadState();
@@ -45,6 +46,9 @@ async function analyzePair(pair, news, fearGreed) {
 
   const existingPosition = s.portfolio.positions.find((p) => p.pair === pair);
 
+  // Bilan des décisions passées du manager (calibration de sa confiance)
+  const bilan = managerCalibrationSummary();
+
   // Agent 4 : décision finale
   const manager = await runManagerAgent({
     pair,
@@ -53,8 +57,28 @@ async function analyzePair(pair, news, fearGreed) {
     sentiment,
     riskPlan,
     riskReview,
-    existingPosition
+    existingPosition,
+    bilan
   });
+
+  // Contexte complet du trade : signaux et réglages au moment de la décision.
+  // Stocké avec l'alerte → la position → le trade clôturé, pour que chaque
+  // trade gagnant ou perdant soit analysable a posteriori (Agent 5 - Coach).
+  const contexte = {
+    techBiais: tech.biais,
+    techConfiance: tech.confiance,
+    sentimentBiais: sentiment.biais,
+    sentimentConfiance: sentiment.confiance,
+    fearGreed: fearGreed ? fearGreed.valeur : null,
+    variation24h: ticker.changePct24h,
+    reglages: {
+      riskPct: s.config.riskPct,
+      atrStopMultiplier: s.config.atrStopMultiplier,
+      rewardRiskRatio: s.config.rewardRiskRatio,
+      trailingStopEnabled: s.config.trailingStopEnabled,
+      minConfidence: s.config.minConfidence
+    }
+  };
 
   // Compte-rendu conservé pour l'interface
   s.reports[pair] = {
@@ -92,7 +116,8 @@ async function analyzePair(pair, news, fearGreed) {
         confiance: manager.confiance,
         synthese: manager.synthese,
         argumentsPour: manager.argumentsPour,
-        argumentsContre: manager.argumentsContre
+        argumentsContre: manager.argumentsContre,
+        contexte
       });
     }
   } else if (manager.action === "VENDRE" && existingPosition && confOk) {
@@ -103,7 +128,8 @@ async function analyzePair(pair, news, fearGreed) {
       confiance: manager.confiance,
       synthese: manager.synthese,
       argumentsPour: manager.argumentsPour,
-      argumentsContre: manager.argumentsContre
+      argumentsContre: manager.argumentsContre,
+      contexte
     });
   }
   saveState();

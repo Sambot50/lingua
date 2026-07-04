@@ -338,6 +338,91 @@ await test("Trailing stop : monte avec le prix, ne redescend jamais", () => {
   approx(posSansDist.stopLoss, 106);
 });
 
+console.log("\n— Mémoire des trades, attribution, équité, rapport quotidien —");
+await test("Le contexte du trade (signaux + réglages) suit la position jusqu'à la clôture", async () => {
+  resetPortfolio(10000);
+  const s = loadState();
+  s.config.feePct = 0; s.config.slippagePct = 0; s.config.maxTotalRiskPct = 100;
+  const price = await fetchPrice("BTC/USDT");
+  const contexte = {
+    techBiais: "haussier", techConfiance: 75,
+    sentimentBiais: "neutre", sentimentConfiance: 50,
+    fearGreed: 62, variation24h: 1.2,
+    reglages: { riskPct: 2, atrStopMultiplier: 1.5, rewardRiskRatio: 2, trailingStopEnabled: false, minConfidence: 60 }
+  };
+  const alert = createAlert({
+    type: "achat", pair: "BTC/USDT", confiance: 70, synthese: "test contexte", contexte,
+    plan: { entree: price, stopLoss: price * 0.97, takeProfit: price * 1.06, quantite: 0.01, montantInvesti: price * 0.01 }
+  });
+  await approveAlert(alert.id);
+  const pos = loadState().portfolio.positions[0];
+  assert.strictEqual(pos.contexte.techBiais, "haussier");
+  pos.stopLoss = pos.entry * 100;
+  await monitorPositions();
+  const t = loadState().portfolio.closedTrades[0];
+  assert.strictEqual(t.contexte.sentimentBiais, "neutre", "le contexte doit survivre à la clôture");
+  assert.strictEqual(t.contexte.reglages.riskPct, 2, "les réglages utilisés doivent être conservés");
+});
+
+await test("Attribution par agent : accord vs désaccord technique/sentiment", async () => {
+  const { computePerformance } = await import("../src/performance.js");
+  const s = loadState();
+  const mk = (pnl, techBiais, sentimentBiais, confiance) => ({
+    pair: "BTC/USDT", pnl, entry: 100, qty: 1, stopLoss: 95, riskAtOpen: 100,
+    confiance, reason: "test", contexte: { techBiais, sentimentBiais, reglages: {} }
+  });
+  s.portfolio.closedTrades = [
+    mk(100, "haussier", "haussier", 80),  // accord, gagnant
+    mk(50, "haussier", "haussier", 70),   // accord, gagnant
+    mk(-80, "haussier", "baissier", 60),  // désaccord, perdant
+    mk(-40, "haussier", "neutre", 60)     // désaccord, perdant
+  ];
+  const p = computePerformance();
+  assert.strictEqual(p.attribution.accordTechSentiment.nb, 2);
+  approx(p.attribution.accordTechSentiment.winRatePct, 100);
+  assert.strictEqual(p.attribution.desaccordTechSentiment.nb, 2);
+  approx(p.attribution.desaccordTechSentiment.winRatePct, 0);
+  assert.strictEqual(p.attribution.parConfianceManager["80 et plus"].nb, 1);
+  approx(p.attribution.parConfianceManager["moins de 65"].winRatePct, 0);
+  s.portfolio.closedTrades = [];
+});
+
+await test("Calibration du manager : bilan injectable à partir de 5 trades", async () => {
+  const { managerCalibrationSummary } = await import("../src/performance.js");
+  const s = loadState();
+  s.portfolio.closedTrades = [];
+  assert.strictEqual(managerCalibrationSummary(), null, "null sous le seuil de 5 trades");
+  s.portfolio.closedTrades = [
+    { pnl: 100, confiance: 85 }, { pnl: -50, confiance: 85 },
+    { pnl: 60, confiance: 70 }, { pnl: -30, confiance: 70 },
+    { pnl: 40, confiance: 55 }, { pnl: -20, confiance: 55 }
+  ];
+  const bilan = managerCalibrationSummary();
+  assert.ok(bilan.includes("6 dernières décisions"), bilan);
+  assert.ok(bilan.includes("50%"), "réussite globale de 50% attendue");
+  s.portfolio.closedTrades = [];
+});
+
+await test("Courbe d'équité : instantané périodique avec intervalle minimal", async () => {
+  const { recordEquitySnapshot } = await import("../src/paperTrading.js");
+  resetPortfolio(10000);
+  recordEquitySnapshot(4);
+  const n1 = loadState().equityHistory.length;
+  assert.strictEqual(n1, 1);
+  recordEquitySnapshot(4); // trop tôt : pas de nouveau point
+  assert.strictEqual(loadState().equityHistory.length, 1);
+  recordEquitySnapshot(0); // intervalle 0 : nouveau point accepté
+  assert.strictEqual(loadState().equityHistory.length, 2);
+});
+
+await test("Rapport quotidien Telegram : contenu complet", async () => {
+  const { buildDailyReport } = await import("../src/telegram.js");
+  const txt = buildDailyReport();
+  for (const needle of ["Rapport quotidien", "Valeur totale", "P&L global", "Positions ouvertes"]) {
+    assert.ok(txt.includes(needle), `le rapport doit contenir "${needle}"`);
+  }
+});
+
 console.log("\n— Journal de performance —");
 await test("Statistiques exactes sur un jeu de trades connu", async () => {
   const { computePerformance } = await import("../src/performance.js");

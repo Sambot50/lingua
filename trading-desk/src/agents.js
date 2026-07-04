@@ -245,7 +245,8 @@ export async function runManagerAgent({
   sentiment,
   riskPlan,
   riskReview,
-  existingPosition
+  existingPosition,
+  bilan
 }) {
   return callAgent({
     system:
@@ -277,7 +278,92 @@ export async function runManagerAgent({
       `--- Rapport de l'analyste sentiment ---\n${JSON.stringify(sentiment, null, 2)}\n\n` +
       `--- Plan de trade calculé (si achat) ---\n${JSON.stringify(riskPlan, null, 2)}\n\n` +
       `--- Avis du risk manager sur ce plan ---\n${JSON.stringify(riskReview, null, 2)}\n\n` +
+      (bilan
+        ? `--- Ton bilan de décisions passées (calibration) ---\n${bilan}\n` +
+          "Tiens-en compte : si ta confiance annoncée s'est révélée mal calibrée, corrige-la.\n\n"
+        : "") +
       "Prends ta décision finale et rédige ton compte-rendu pour l'investisseur.",
     schema: MANAGER_SCHEMA
+  });
+}
+
+// ---------------------------------------------------------------- Agent 5
+// Coach / Analyste de données : étudie l'historique complet des trades
+// (signaux + réglages + résultats) et propose des ajustements.
+// Ses recommandations ne sont JAMAIS appliquées automatiquement.
+const COACH_SCHEMA = {
+  type: "object",
+  properties: {
+    diagnostics: {
+      type: "array",
+      items: { type: "string" },
+      description: "Constats factuels tirés des données (patterns gagnants/perdants)"
+    },
+    forces: { type: "array", items: { type: "string" } },
+    faiblesses: { type: "array", items: { type: "string" } },
+    recommandationsReglages: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          parametre: { type: "string", description: "Nom du réglage concerné" },
+          valeurActuelle: { type: "string" },
+          valeurProposee: { type: "string" },
+          justification: { type: "string" }
+        },
+        required: ["parametre", "valeurActuelle", "valeurProposee", "justification"],
+        additionalProperties: false
+      }
+    },
+    fiabiliteAnalyse: {
+      type: "string",
+      description:
+        "Honnêteté statistique : à quel point l'échantillon est-il suffisant pour ces conclusions ?"
+    },
+    synthese: { type: "string", description: "Bilan du coach en 3-5 phrases, en français" }
+  },
+  required: [
+    "diagnostics", "forces", "faiblesses",
+    "recommandationsReglages", "fiabiliteAnalyse", "synthese"
+  ],
+  additionalProperties: false
+};
+
+export async function runDataAnalystAgent({ trades, performance, config }) {
+  // On transmet les trades les plus récents avec leur contexte complet
+  const echantillon = trades.slice(0, 40).map((t) => ({
+    pair: t.pair,
+    pnl: t.pnl,
+    pnlPct: t.pnlPct,
+    frais: t.fees,
+    motifSortie: t.reason,
+    confianceManager: t.confiance,
+    dureeHeures: t.openedAt && t.closedAt
+      ? Math.round((new Date(t.closedAt) - new Date(t.openedAt)) / 3600e3)
+      : null,
+    contexte: t.contexte || null
+  }));
+  return callAgent({
+    system:
+      "Tu es un analyste quantitatif et coach de trading dans une société de gestion. " +
+      "Ta mission : analyser l'historique des trades (chaque trade contient les signaux " +
+      "des agents au moment de l'entrée, les réglages utilisés et le résultat net de frais) " +
+      "pour identifier ce qui marche, ce qui ne marche pas, et proposer des ajustements de réglages. " +
+      "Règles impératives : " +
+      "1) Rigueur statistique absolue : avec moins de 30 trades, dis clairement que les conclusions " +
+      "sont fragiles ; ne tire jamais de conclusion d'un échantillon de 2-3 trades. " +
+      "2) Tes recommandations ne sont jamais appliquées automatiquement : l'investisseur décide. " +
+      "3) Cherche les patterns exploitables : accord/désaccord technique-sentiment, niveaux de " +
+      "confiance du manager, motifs de sortie (stops touchés trop souvent ?), Fear & Greed à l'entrée, " +
+      "durée des trades, impact des frais. " +
+      "4) Sois honnête : si les données suggèrent que la stratégie ne fonctionne pas, dis-le. " +
+      "Réponds en français.",
+    user:
+      `Réglages actuels :\n${JSON.stringify(config, null, 2)}\n\n` +
+      `Statistiques globales du journal :\n${JSON.stringify(performance, null, 2)}\n\n` +
+      `Historique détaillé des trades (du plus récent au plus ancien) :\n${JSON.stringify(echantillon, null, 2)}\n\n` +
+      "Analyse ces données et rédige ton rapport de coach.",
+    schema: COACH_SCHEMA,
+    maxTokens: 12000
   });
 }

@@ -104,6 +104,7 @@ export async function approveAlert(alertId) {
       openedAt: new Date().toISOString(),
       alertId: alert.id,
       confiance: alert.confiance,
+      contexte: alert.contexte || null,
       feesPaid: Math.round(fee * 100) / 100,
       riskAtOpen: Math.round(qty * (entry - plan.stopLoss) * 100) / 100,
       live
@@ -164,6 +165,34 @@ function doClosePosition(s, pos, price, reason) {
     reason
   });
   s.portfolio.closedTrades = s.portfolio.closedTrades.slice(0, 200);
+  pushEquityPoint(s); // la courbe d'équité enregistre chaque clôture
+}
+
+// Courbe d'équité : historique de la valeur totale du portefeuille
+function totalEquity(s) {
+  return (
+    s.portfolio.cash +
+    s.portfolio.positions.reduce((sum, p) => sum + p.qty * (p.lastPrice || p.entry), 0)
+  );
+}
+
+function pushEquityPoint(s) {
+  s.equityHistory ??= [];
+  s.equityHistory.push({
+    t: new Date().toISOString(),
+    total: Math.round(totalEquity(s) * 100) / 100
+  });
+  if (s.equityHistory.length > 730) s.equityHistory.shift();
+}
+
+// Instantané périodique (appelé par le serveur) — au plus un point toutes les N heures
+export function recordEquitySnapshot(minGapHours = 4) {
+  const s = loadState();
+  const last = s.equityHistory?.[s.equityHistory.length - 1];
+  if (!last || Date.now() - new Date(last.t).getTime() >= minGapHours * 3600e3) {
+    pushEquityPoint(s);
+    saveState();
+  }
 }
 
 // Exposition actuelle : capital total et risque cumulé si tous les stops sautent

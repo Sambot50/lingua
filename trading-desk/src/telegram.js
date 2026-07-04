@@ -7,6 +7,8 @@
 // 3. Envoie un message à ton bot, puis renseigne ton chat ID dans les réglages
 //    (l'application le détecte et l'affiche automatiquement au premier message)
 import { loadState, saveState } from "./store.js";
+import { portfolioSummary } from "./paperTrading.js";
+import { computePerformance } from "./performance.js";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const API = () => `https://api.telegram.org/bot${TOKEN}`;
@@ -76,6 +78,43 @@ export async function notifyText(text) {
     await tg("sendMessage", { chat_id: s.config.telegramChatId, text, parse_mode: "HTML" });
   } catch (err) {
     console.error("Notification Telegram :", err.message);
+  }
+}
+
+// Exportée pour les tests : rapport quotidien
+export function buildDailyReport() {
+  const s = loadState();
+  const sum = portfolioSummary();
+  const perf = computePerformance();
+  const pending = s.alerts.filter((a) => a.status === "en_attente").length;
+  const sign = (v) => (v >= 0 ? "+" : "");
+  let txt =
+    `📊 <b>Rapport quotidien — Trading Desk</b>\n\n` +
+    `💼 Valeur totale : <b>${fmt(sum.total)} USDT</b>\n` +
+    `💵 Cash : ${fmt(sum.cash)} USDT · Positions : ${fmt(sum.positionsValue)} USDT\n` +
+    `📈 P&L global : <b>${sign(sum.pnlTotal)}${fmt(sum.pnlTotal)} USDT (${sign(sum.pnlPct)}${fmt(sum.pnlPct)}%)</b>\n` +
+    `🔓 Positions ouvertes : ${s.portfolio.positions.length}` +
+    (pending > 0 ? `\n🔔 <b>${pending} alerte(s) en attente de ta validation !</b>` : "");
+  if (perf.nbTrades > 0) {
+    txt +=
+      `\n\n📒 Journal : ${perf.nbTrades} trades · ${fmt(perf.winRatePct)}% de réussite · ` +
+      `profit factor ${perf.profitFactor == null ? "∞" : fmt(perf.profitFactor)} · ` +
+      `frais cumulés ${fmt(perf.fraisTotaux)} USDT`;
+  }
+  return txt;
+}
+
+export async function sendDailyReportIfDue() {
+  const s = loadState();
+  if (!TOKEN || !s.config.telegramChatId) return;
+  const hour = s.config.dailyReportHour;
+  if (!(hour >= 0)) return;
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  if (now.getHours() === hour && s.lastDailyReport !== today) {
+    s.lastDailyReport = today;
+    saveState();
+    await notifyText(buildDailyReport());
   }
 }
 

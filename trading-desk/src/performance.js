@@ -67,6 +67,33 @@ export function computePerformance() {
     parMotif[t.reason].pnl = r2(parMotif[t.reason].pnl + t.pnl);
   }
 
+  // Attribution par agent : quels signaux étaient présents sur les trades
+  // gagnants vs perdants ? (nécessite le contexte stocké à l'ouverture)
+  const grp = (list) => ({
+    nb: list.length,
+    gagnants: list.filter((t) => t.pnl > 0).length,
+    winRatePct: list.length ? r2((list.filter((t) => t.pnl > 0).length / list.length) * 100) : null,
+    pnl: r2(list.reduce((a, t) => a + t.pnl, 0))
+  });
+  const withCtx = trades.filter((t) => t.contexte);
+  let attribution = null;
+  if (withCtx.length > 0) {
+    attribution = {
+      tradesAvecContexte: withCtx.length,
+      accordTechSentiment: grp(
+        withCtx.filter((t) => t.contexte.techBiais === t.contexte.sentimentBiais)
+      ),
+      desaccordTechSentiment: grp(
+        withCtx.filter((t) => t.contexte.techBiais !== t.contexte.sentimentBiais)
+      ),
+      parConfianceManager: {
+        "moins de 65": grp(trades.filter((t) => Number.isFinite(t.confiance) && t.confiance < 65)),
+        "65 à 79": grp(trades.filter((t) => t.confiance >= 65 && t.confiance < 80)),
+        "80 et plus": grp(trades.filter((t) => t.confiance >= 80))
+      }
+    };
+  }
+
   return {
     nbTrades: trades.length,
     gagnants: winners.length,
@@ -89,6 +116,31 @@ export function computePerformance() {
     confianceMoyennePerdants: conf(losers),
     parPaire,
     parMotif,
+    attribution,
     alertStats
   };
+}
+
+// Bilan compact des décisions passées du manager, injecté dans son prompt
+// pour calibrer sa confiance (un LLM ne se souvient de rien entre deux appels —
+// lui montrer son propre bilan corrige réellement sa calibration).
+export function managerCalibrationSummary(minTrades = 5) {
+  const trades = loadState().portfolio.closedTrades.filter((t) =>
+    Number.isFinite(t.confiance)
+  );
+  if (trades.length < minTrades) return null;
+  const bucket = (list) => {
+    if (list.length === 0) return "aucun trade";
+    const wins = list.filter((t) => t.pnl > 0).length;
+    return `${list.length} trades, ${r2((wins / list.length) * 100)}% de réussite`;
+  };
+  const wins = trades.filter((t) => t.pnl > 0).length;
+  return (
+    `Sur tes ${trades.length} dernières décisions validées par l'investisseur : ` +
+    `${r2((wins / trades.length) * 100)}% de réussite globale. ` +
+    `Par niveau de confiance que tu avais annoncé : ` +
+    `confiance < 65 → ${bucket(trades.filter((t) => t.confiance < 65))} ; ` +
+    `confiance 65-79 → ${bucket(trades.filter((t) => t.confiance >= 65 && t.confiance < 80))} ; ` +
+    `confiance ≥ 80 → ${bucket(trades.filter((t) => t.confiance >= 80))}.`
+  );
 }

@@ -11,15 +11,18 @@ import {
   monitorPositions,
   expireOldAlerts,
   portfolioSummary,
-  setAlertHook
+  setAlertHook,
+  recordEquitySnapshot
 } from "./src/paperTrading.js";
+import { runDataAnalystAgent } from "./src/agents.js";
 import { runFullAnalysis } from "./src/analysis.js";
 import { computePerformance } from "./src/performance.js";
 import { brokerInfo } from "./src/broker.js";
 import {
   isTelegramConfigured,
   startTelegramPolling,
-  notifyAlert
+  notifyAlert,
+  sendDailyReportIfDue
 } from "./src/telegram.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -66,6 +69,8 @@ app.get("/api/state", (req, res) => {
     alerts: state.alerts,
     reports: state.reports,
     performance: computePerformance(),
+    equityHistory: state.equityHistory,
+    coachReport: state.coachReport,
     lastAnalysisAt: state.lastAnalysisAt,
     analysisInProgress: state.analysisInProgress,
     lastError: state.lastError,
@@ -162,6 +167,10 @@ app.post("/api/config", (req, res) => {
   if (trailingStopEnabled !== undefined) {
     state.config.trailingStopEnabled = Boolean(trailingStopEnabled);
   }
+  if (req.body?.dailyReportHour !== undefined) {
+    const v = Number(req.body.dailyReportHour);
+    if (v === -1 || (v >= 0 && v <= 23)) state.config.dailyReportHour = v;
+  }
   if (tradingMode !== undefined) {
     if (tradingMode === "reel" && !brokerInfo().configured) {
       return res.status(400).json({
@@ -173,6 +182,28 @@ app.post("/api/config", (req, res) => {
   }
   saveState();
   res.json(state.config);
+});
+
+// Agent 5 — Coach : analyse l'historique des trades à la demande
+app.post("/api/coach", async (req, res) => {
+  const trades = state.portfolio.closedTrades;
+  if (trades.length < 5) {
+    return res.status(400).json({
+      error: `Il faut au moins 5 trades clôturés pour une analyse (actuellement : ${trades.length}).`
+    });
+  }
+  try {
+    const result = await runDataAnalystAgent({
+      trades,
+      performance: computePerformance(),
+      config: state.config
+    });
+    state.coachReport = { at: new Date().toISOString(), nbTradesAnalyses: Math.min(trades.length, 40), ...result };
+    saveState();
+    res.json(state.coachReport);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post("/api/portfolio/reset", (req, res) => {
@@ -190,6 +221,8 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 // Surveillance des positions (stop-loss / take-profit) toutes les 60 s
 setInterval(() => {
   expireOldAlerts();
+  recordEquitySnapshot(4); // point de courbe d'équité au plus toutes les 4 h
+  sendDailyReportIfDue().catch((e) => console.error("Rapport quotidien :", e.message));
   if (state.portfolio.positions.length > 0) {
     monitorPositions().catch((e) => console.error("Surveillance :", e.message));
   }

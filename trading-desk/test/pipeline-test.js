@@ -49,6 +49,18 @@ const fakeClient = {
         };
       } else if (sys.includes("gestionnaire des risques")) {
         payload = { valide: true, alertes: ["Volatilité élevée sur la paire"], commentaire: "Plan conforme aux règles." };
+      } else if (sys.includes("analyste quantitatif")) {
+        payload = {
+          diagnostics: ["Les trades en désaccord technique/sentiment perdent plus souvent"],
+          forces: ["Discipline de validation"],
+          faiblesses: ["Stops touchés fréquemment"],
+          recommandationsReglages: [{
+            parametre: "atrStopMultiplier", valeurActuelle: "1.5", valeurProposee: "2",
+            justification: "Trop de stops touchés par le bruit du marché."
+          }],
+          fiabiliteAnalyse: "Échantillon réduit : conclusions à confirmer.",
+          synthese: "Base saine, stops à élargir."
+        };
       } else {
         throw new Error("Prompt système non reconnu : " + sys.slice(0, 60));
       }
@@ -98,7 +110,9 @@ assert.strictEqual(pending.length, 1, "une alerte d'achat doit être créée");
 const alert = pending[0];
 assert.strictEqual(alert.type, "achat");
 assert.ok(alert.plan.quantite > 0);
-console.log("  ✅ Alerte d'achat créée, en attente de validation humaine");
+assert.strictEqual(alert.contexte?.techBiais, "haussier", "le contexte des signaux doit être attaché à l'alerte");
+assert.strictEqual(alert.contexte?.reglages?.riskPct, 2, "les réglages du moment doivent être attachés");
+console.log("  ✅ Alerte d'achat créée avec le contexte complet (signaux + réglages)");
 
 // Validation humaine → position ouverte
 await approveAlert(alert.id);
@@ -163,6 +177,41 @@ assert.ok(
   "le rapport doit expliquer pourquoi l'alerte a été bloquée"
 );
 console.log("  ✅ Plafond d'exposition corrélée : alerte bloquée et motif tracé dans le rapport");
+
+// Calibration : avec un historique de trades, le manager reçoit son bilan
+resetPortfolio(10000);
+const s5 = loadState();
+s5.config.pairs = ["BTC/USDT"];
+s5.config.minConfidence = 0;
+s5.config.maxTotalRiskPct = 100;
+s5.portfolio.closedTrades = [
+  { pnl: 100, confiance: 85 }, { pnl: -50, confiance: 85 }, { pnl: 60, confiance: 70 },
+  { pnl: -30, confiance: 70 }, { pnl: 40, confiance: 55 }, { pnl: -20, confiance: 55 }
+];
+calls = [];
+await runFullAnalysis();
+for (let i = 0; i < 100 && loadState().analysisInProgress; i++) {
+  await new Promise((r) => setTimeout(r, 100));
+}
+const managerCall = calls.find((c) => c.system.includes("chef d'orchestre"));
+assert.ok(
+  managerCall.messages[0].content.includes("Ton bilan de décisions passées"),
+  "le manager doit recevoir son bilan de calibration"
+);
+console.log("  ✅ Calibration : le manager reçoit le bilan de ses décisions passées");
+
+// Agent 5 — Coach : analyse structurée de l'historique
+const { runDataAnalystAgent } = await import("../src/agents.js");
+const s6 = loadState();
+const coach = await runDataAnalystAgent({
+  trades: s6.portfolio.closedTrades,
+  performance: { nbTrades: 6, winRatePct: 50 },
+  config: s6.config
+});
+assert.ok(Array.isArray(coach.diagnostics) && coach.diagnostics.length > 0);
+assert.strictEqual(coach.recommandationsReglages[0].parametre, "atrStopMultiplier");
+assert.ok(coach.fiabiliteAnalyse.length > 0, "l'honnêteté statistique doit être présente");
+console.log("  ✅ Agent 5 (Coach) : rapport structuré avec recommandations de réglages");
 
 resetPortfolio(10000);
 await new Promise((r) => setTimeout(r, 500));

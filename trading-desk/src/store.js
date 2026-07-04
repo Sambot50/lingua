@@ -22,7 +22,8 @@ const DEFAULT_STATE = {
     feePct: 0.1, // frais simulés par ordre en paper trading (% — Binance spot : 0,1%)
     slippagePct: 0.05, // glissement de prix simulé par ordre (%)
     maxTotalRiskPct: 4, // plafond de risque cumulé toutes positions (% du capital)
-    trailingStopEnabled: false // stop suiveur : remonte avec le prix
+    trailingStopEnabled: false, // stop suiveur : remonte avec le prix
+    dailyReportHour: 20 // heure du rapport quotidien Telegram (-1 = désactivé)
   },
   portfolio: {
     cash: 10000,
@@ -31,6 +32,9 @@ const DEFAULT_STATE = {
   },
   alerts: [],
   reports: {},
+  equityHistory: [],
+  coachReport: null,
+  lastDailyReport: null,
   lastAnalysisAt: null,
   analysisInProgress: false,
   lastError: null
@@ -74,5 +78,7 @@ export function resetPortfolio(initialCapital) {
   s.config.initialCapital = initialCapital;
   s.portfolio = { cash: initialCapital, positions: [], closedTrades: [] };
   s.alerts = [];
+  s.equityHistory = [];
+  s.coachReport = null;
   saveState();
 }
