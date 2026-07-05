@@ -48,7 +48,12 @@ PAPER_FAKE_DATA=1 npm start
 
 Génère des données de marché synthétiques — pratique pour découvrir l'interface.
 
-## ☁️ Déploiement sur Render (gratuit)
+## ☁️ Déploiement 24h/24 gratuit
+
+**👉 Guide pas à pas complet : [DEPLOIEMENT.md](DEPLOIEMENT.md)** (Render + UptimeRobot,
+15 minutes, 0 €, avec alerte e-mail si le serveur tombe).
+
+### Résumé Render
 
 1. Crée un compte sur [render.com](https://render.com)
 2. **New → Web Service** → connecte ce dépôt GitHub
