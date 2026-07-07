@@ -1,55 +1,55 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Ce fichier guide Claude Code (claude.ai/code) lorsqu'il travaille sur le code de ce dépôt.
 
-## What this is
+## De quoi il s'agit
 
-Lingua is a personal English-learning PWA (single user: Alexandre Bothereau). Vocabulary is stored in a Notion database, accessed through a Cloudflare Worker proxy. The UI is in French.
+Lingua est une PWA personnelle d'apprentissage de l'anglais (utilisateur unique : Alexandre Bothereau). Le vocabulaire est stocké dans une base Notion, accessible via un proxy Cloudflare Worker. L'interface est en français.
 
-**There is no build system, no package.json, no linter, and no tests.** The app is plain HTML/CSS/JS with zero dependencies.
+**Il n'y a ni système de build, ni package.json, ni linter, ni tests.** L'app est en HTML/CSS/JS pur, sans aucune dépendance.
 
-## Development
+## Développement
 
-Serve the directory with any static server (a plain `file://` open won't register the service worker):
+Servir le répertoire avec n'importe quel serveur statique (une ouverture en `file://` n'enregistrera pas le service worker) :
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Deployment is GitHub Pages serving the `main` branch root — pushing to `main` is deploying. There is no build step.
+Le déploiement est assuré par GitHub Pages qui sert la racine de la branche `main` — pousser sur `main`, c'est déployer. Il n'y a pas d'étape de build.
 
 ## Architecture
 
-Four files make up the entire app:
+Quatre fichiers composent toute l'app :
 
-- **`index.html`** — the whole application: CSS in a `<style>` block, JS in a `<script>` block. All UI and logic live here.
-- **`sw.js`** — service worker for offline support (cache-first strategy).
-- **`manifest.json`** — PWA manifest (installable on iPhone/Mac).
-- **`icons/`** — SVG icons referenced by the manifest.
+- **`index.html`** — l'application entière : le CSS dans un bloc `<style>`, le JS dans un bloc `<script>`. Toute l'UI et la logique sont ici.
+- **`sw.js`** — service worker pour le mode hors-ligne (stratégie cache-first).
+- **`manifest.json`** — manifeste PWA (installable sur iPhone/Mac).
+- **`icons/`** — icônes SVG référencées par le manifeste.
 
-### Backend (not in this repo)
+### Backend (absent de ce dépôt)
 
-`index.html` defines `WORKER_URL`, a Cloudflare Worker that holds the Notion credentials and proxies all data access. The worker's code is not in this repository. The API surface the frontend expects:
+`index.html` définit `WORKER_URL`, un Cloudflare Worker qui détient les identifiants Notion et proxifie tous les accès aux données. Le code du worker n'est pas dans ce dépôt. L'API attendue par le frontend :
 
 - `GET  /words` → `{words: [...]}`
-- `POST /words` with `{word, category, example}` → `{success, word}`
-- `PATCH /words/:id/mastered` with `{mastered: bool}` → `{success}`
+- `POST /words` avec `{word, category, example}` → `{success, word}`
+- `PATCH /words/:id/mastered` avec `{mastered: bool}` → `{success}`
 
-A word object is `{id, word, category, example, mastered}`. Categories are free-form strings from Notion (e.g. `Naval`, `Général`, `Business`, `Série/Film`).
+Un objet mot est `{id, word, category, example, mastered}`. Les catégories sont des chaînes libres venant de Notion (ex. `Naval`, `Général`, `Business`, `Série/Film`).
 
-The "Analyser un texte" feature calls `api.anthropic.com` directly from the browser (separately from the worker).
+La fonctionnalité « Analyser un texte » appelle `api.anthropic.com` directement depuis le navigateur (indépendamment du worker).
 
-### UI pattern in index.html
+### Pattern d'UI dans index.html
 
-Tab-based SPA driven by global state variables (`words`, `currentTab`, `flashList`, filter vars). Each tab has a `render*()` function (`renderGlossary`, `renderFlash`, `renderAdd`, `renderStats`) that rebuilds `#screen` via `innerHTML` template literals; event handlers are inline `onclick` attributes calling global functions. Mutations are optimistic: local state is updated first, the API call follows, with rollback on failure (see `toggleMastered`). Follow this pattern rather than introducing frameworks or modules.
+SPA à onglets pilotée par des variables d'état globales (`words`, `currentTab`, `flashList`, variables de filtre). Chaque onglet a une fonction `render*()` (`renderGlossary`, `renderFlash`, `renderAdd`, `renderStats`) qui reconstruit `#screen` via des template literals `innerHTML` ; les gestionnaires d'événements sont des attributs `onclick` inline appelant des fonctions globales. Les mutations sont optimistes : l'état local est mis à jour d'abord, l'appel API suit, avec rollback en cas d'échec (voir `toggleMastered`). Suivre ce pattern plutôt que d'introduire des frameworks ou des modules.
 
 ## Conventions
 
-- **Service worker cache**: `sw.js` uses a versioned cache name (`lingua-v1`). When changing `index.html` or other cached assets, bump this version or installed clients will keep serving the stale cached copy.
-- UI text is French; code identifiers are English.
-- Mobile-first layout (max-width 480px, iOS safe-area insets). Preserve `-webkit-` touch/scroll tweaks and the bottom-sheet modal style.
-- CSS uses the custom properties defined in `:root` (`--bg`, `--acc`, `--grn`, etc.) — reuse them instead of hardcoding colors.
+- **Cache du service worker** : `sw.js` utilise un nom de cache versionné (`lingua-v1`). Lors d'une modification d'`index.html` ou d'autres assets mis en cache, incrémenter cette version, sinon les clients installés continueront de servir l'ancienne copie en cache.
+- Les textes de l'UI sont en français ; les identifiants du code sont en anglais.
+- Mise en page mobile-first (max-width 480px, safe-area insets iOS). Préserver les ajustements tactiles/scroll `-webkit-` et le style de modale bottom-sheet.
+- Le CSS utilise les custom properties définies dans `:root` (`--bg`, `--acc`, `--grn`, etc.) — les réutiliser plutôt que de coder les couleurs en dur.
 
-## Known discrepancy
+## Divergence connue
 
-The README describes a "Réglages" (settings) tab where a Notion token is pasted into the app. The current app has no such tab — Notion access goes exclusively through the Cloudflare Worker. Trust the code over the README on this point.
+Le README décrit un onglet « Réglages » où un token Notion serait collé dans l'app. L'app actuelle n'a pas cet onglet — l'accès à Notion passe exclusivement par le Cloudflare Worker. Sur ce point, faire confiance au code plutôt qu'au README.
